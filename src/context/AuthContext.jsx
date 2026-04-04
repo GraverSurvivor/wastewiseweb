@@ -92,39 +92,72 @@ export function AuthProvider({ children }) {
     [],
   )
 
-  const signUp = useCallback(
-    async (email, password, meta) => {
-      setAuthError(null)
-      if (!supabase) {
-        setAuthError('Supabase is not configured.')
-        return { error: new Error('not configured') }
-      }
-      const e = email.trim().toLowerCase()
-      if (!isRvceEmail(e)) {
-        const err = new Error(
-          `Only college email addresses (${RVCE_DOMAIN}) are allowed.`,
-        )
-        setAuthError(err.message)
-        return { error: err }
-      }
-      const { data, error } = await supabase.auth.signUp({
-        email: e,
-        password,
-        options: {
-          data: meta,
-          // After email verification, Supabase redirects here.
-          // Using current origin avoids "site not reached" when your local dev port differs.
-          emailRedirectTo:
-            typeof window !== 'undefined'
-              ? window.location.origin
-              : undefined,
-        },
-      })
-      if (error) setAuthError(error.message)
-      return { data, error }
-    },
-    [],
+const signUp = useCallback(
+  async (email, password, meta) => {
+    setAuthError(null)
+    if (!supabase) {
+      setAuthError('Supabase is not configured.')
+      return { error: new Error('not configured') }
+    }
+    const e = email.trim().toLowerCase()
+    if (!isRvceEmail(e)) {
+      const err = new Error(
+        `Only college email addresses (${RVCE_DOMAIN}) are allowed.`,
+      )
+      setAuthError(err.message)
+      return { error: err }
+    }
+
+    // Check if user already exists before attempting signup
+    const { data: existingUser } = await supabase
+      .from('students')
+      .select('email')
+      .eq('email', e)
+      .maybeSingle()
+
+    if (existingUser) {
+      const err = new Error('An account with this email already exists. Please sign in instead.')
+      setAuthError(err.message)
+      return { error: err }
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email: e,
+      password,
+      options: {
+        data: meta,
+        emailRedirectTo:
+          typeof window !== 'undefined'
+            ? window.location.origin
+            : undefined,
+      },
+    })
+
+    // Supabase returns a fake success for existing emails
+    // Detect it by checking if identities array is empty
+    if (!error && data?.user?.identities?.length === 0) {
+      const err = new Error('An account with this email already exists. Please sign in instead.')
+      setAuthError(err.message)
+      return { error: err }
+    }
+
+    if (error) setAuthError(error.message)
+    return { data, error }
+  },
+  [],
+)
+const resetPassword = useCallback(async (email) => {
+  setAuthError(null)
+  if (!supabase) return
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    email.trim().toLowerCase(),
+    {
+      redirectTo: `${window.location.origin}/reset-password`,
+    }
   )
+  if (error) setAuthError(error.message)
+  return { error }
+}, [])
 
   const signOut = useCallback(async () => {
     setAuthError(null)
@@ -150,6 +183,7 @@ export function AuthProvider({ children }) {
       signIn,
       signUp,
       signOut,
+      resetPassword,
       refreshStudent,
       supabaseConfigured,
       supabase,
@@ -164,6 +198,7 @@ export function AuthProvider({ children }) {
       signIn,
       signUp,
       signOut,
+      resetPassword,
       refreshStudent,
     ],
   )

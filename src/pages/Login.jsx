@@ -7,6 +7,7 @@ export function Login() {
   const {
     signIn,
     signUp,
+    resetPassword,
     supabase,
     supabaseConfigured,
     authError,
@@ -25,11 +26,38 @@ export function Login() {
     () => location.state?.adminIntent === true,
   )
   const [localError, setLocalError] = useState(null)
+  const [successMsg, setSuccessMsg] = useState(null)
   const [pending, setPending] = useState(false)
+  const [showForgot, setShowForgot] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
 
   const clearErrors = () => {
     setLocalError(null)
     setAuthError(null)
+    setSuccessMsg(null)
+  }
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault()
+    clearErrors()
+    const em = forgotEmail.trim().toLowerCase()
+    if (!isRvceEmail(em)) {
+      setLocalError('Please enter your RVCE college email.')
+      return
+    }
+    setPending(true)
+    try {
+      const { error } = await resetPassword(em)
+      if (error) {
+        setLocalError(error.message)
+      } else {
+        setSuccessMsg('Password reset link sent! Check your college email.')
+        setShowForgot(false)
+        setForgotEmail('')
+      }
+    } finally {
+      setPending(false)
+    }
   }
 
   const submit = async (e) => {
@@ -63,10 +91,9 @@ export function Login() {
           roll_number: roll.trim(),
         })
         if (error) return
-        const sess = data.session ?? (await supabase.auth.getSession()).data.session // After registration, the user might need to confirm their email before the session is active
+        const sess = data.session ?? (await supabase.auth.getSession()).data.session
         const u = sess?.user
-        const token = sess?.access_token //ACCESS THE TOKEN HERE
-        console.log("TOKEN FROM SUPABASE:", token)  // ✅ ADD THIS LINE HERE
+        const token = sess?.access_token
         if (u && token) {
           try {
             await apiJson('/student/profile', {
@@ -81,9 +108,11 @@ export function Login() {
             return
           }
         } else if (!u) {
-          setLocalError(
-            'Check your email to confirm your account (or disable email confirmation in Supabase for dev), then sign in.',
+          setSuccessMsg(
+            'Account created! Please check your college email to verify your account, then sign in.',
           )
+          setMode('signin')
+          setPassword('')
           return
         }
         if (adminIntent) navigate('/admin', { replace: true })
@@ -95,6 +124,65 @@ export function Login() {
   }
 
   const displayError = localError || authError
+
+  // Forgot password screen
+  if (showForgot) {
+    return (
+      <div className="page-enter min-h-[100dvh] bg-gradient-to-b from-primary/15 via-white to-slate-50 px-4 py-10">
+        <div className="mx-auto w-full max-w-[390px] space-y-6">
+          <div className="text-center">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-2xl font-bold text-white shadow-lg shadow-primary/25">
+              W
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900">Reset password</h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Enter your college email to receive a reset link
+            </p>
+          </div>
+          <form
+            onSubmit={handleForgotPassword}
+            className="space-y-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-lg"
+          >
+            <label className="block text-xs font-medium text-slate-600">
+              College email
+              <input
+                type="email"
+                required
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none ring-primary/30 focus:ring-2"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                placeholder="you.name@rvce.edu.in"
+              />
+            </label>
+            {displayError && (
+              <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+                {displayError}
+              </p>
+            )}
+            {successMsg && (
+              <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                {successMsg}
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={pending}
+              className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white shadow-md disabled:opacity-60"
+            >
+              {pending ? 'Sending…' : 'Send reset link'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowForgot(false); clearErrors() }}
+              className="w-full rounded-xl border border-slate-200 py-2.5 text-sm text-slate-600"
+            >
+              Back to sign in
+            </button>
+          </form>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="page-enter min-h-[100dvh] bg-gradient-to-b from-primary/15 via-white to-slate-50 px-4 py-10">
@@ -115,31 +203,27 @@ export function Login() {
           </div>
         )}
 
+        {successMsg && (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+            {successMsg}
+          </div>
+        )}
+
         <div className="flex rounded-2xl bg-slate-100/90 p-1">
           <button
             type="button"
-            onClick={() => {
-              setMode('signin')
-              clearErrors()
-            }}
+            onClick={() => { setMode('signin'); clearErrors() }}
             className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition ${
-              mode === 'signin'
-                ? 'bg-white text-primary shadow-sm'
-                : 'text-slate-600'
+              mode === 'signin' ? 'bg-white text-primary shadow-sm' : 'text-slate-600'
             }`}
           >
             Sign in
           </button>
           <button
             type="button"
-            onClick={() => {
-              setMode('register')
-              clearErrors()
-            }}
+            onClick={() => { setMode('register'); clearErrors() }}
             className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition ${
-              mode === 'register'
-                ? 'bg-white text-primary shadow-sm'
-                : 'text-slate-600'
+              mode === 'register' ? 'bg-white text-primary shadow-sm' : 'text-slate-600'
             }`}
           >
             Register
@@ -191,15 +275,25 @@ export function Login() {
             <input
               type="password"
               required
-              autoComplete={
-                mode === 'signin' ? 'current-password' : 'new-password'
-              }
+              autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
               className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none ring-primary/30 focus:ring-2"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
             />
           </label>
+
+          {mode === 'signin' && (
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => { setShowForgot(true); clearErrors() }}
+                className="text-xs text-primary underline"
+              >
+                Forgot password?
+              </button>
+            </div>
+          )}
 
           {displayError && (
             <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -223,9 +317,7 @@ export function Login() {
         <div className="space-y-3">
           <button
             type="button"
-            onClick={() => {
-              setAdminIntent(true)
-            }}
+            onClick={() => setAdminIntent(true)}
             className="w-full rounded-2xl border-2 border-admin bg-admin px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-admin-dark"
           >
             Continue as Admin / Warden
@@ -233,8 +325,7 @@ export function Login() {
           {adminIntent && (
             <p className="text-center text-xs text-slate-500">
               Admin mode: after sign in you must have an admin profile in
-              Supabase (<code className="rounded bg-slate-100 px-1">profiles.role</code>
-              ).
+              Supabase (<code className="rounded bg-slate-100 px-1">profiles.role</code>).
             </p>
           )}
         </div>
