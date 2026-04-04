@@ -13,6 +13,10 @@ import { ComplaintsPage } from './pages/student/Complaints'
 import { AdminDashboard } from './pages/admin/AdminDashboard'
 import { Scanner } from './pages/Scanner'
 import { Skeleton } from './components/Skeleton'
+import { ResetPassword } from './pages/ResetPassword'
+
+// inside your routes:
+<Route path="/reset-password" element={<ResetPassword />} />
 
 function RequireAuth({ children }) {
   const { session, loading } = useAuth()
