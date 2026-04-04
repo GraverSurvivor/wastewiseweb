@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #1a7a52;
+  --color-primary-dark: #145f40;
+  --color-admin: #1a3a6b;
+  --color-admin-dark: #122a4d;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased min-h-[100dvh];
+  }
+}
+
+/* smooth route transitions */
+.page-enter {
+  animation: pageIn 0.35s ease-out both;
+}
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
