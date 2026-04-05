@@ -226,22 +226,36 @@ async def upsert_profile(body: ProfileBody, authorization: str | None = Header(N
     email = email_from_token(token)
     if not email:
         raise HTTPException(400, "Missing email on account; sign in again.")
-    path = f"students?select=face_registered&user_id=eq.{uid}"
-    existing = await sb.rest_get(path, token)
-    prev = existing[0] if isinstance(existing, list) and existing else {}
+    
+    # Check if student already exists for this user
+    existing = await sb.rest_get(
+        f"students?select=id,face_registered&user_id=eq.{uid}",
+        token
+    )
+    prev = existing[0] if isinstance(existing, list) and existing else None
+    
     payload = {
         "user_id": uid,
         "email": email,
         "name": body.name.strip(),
         "roll_number": body.roll_number.strip(),
-        "face_registered": prev.get("face_registered") or False,
+        "face_registered": prev.get("face_registered") if prev else False,
     }
-    await sb.rest_post(
-        "students?on_conflict=user_id",
-        token,
-        payload,
-        merge=True,
-    )
+    
+    if prev:
+        # Update existing row
+        await sb.rest_patch(
+            f"students?user_id=eq.{uid}",
+            token,
+            payload,
+        )
+    else:
+        # Insert new row
+        await sb.rest_post(
+            "students",
+            token,
+            payload,
+        )
     return {"ok": True}
 
 
