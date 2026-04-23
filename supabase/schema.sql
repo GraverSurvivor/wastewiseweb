@@ -57,6 +57,8 @@ create table if not exists public.announcements (
   id uuid primary key default gen_random_uuid(),
   message text not null,
   created_by uuid references auth.users,
+  duration_days integer not null default 1 check (duration_days between 1 and 365),
+  expires_at timestamptz,
   created_at timestamptz default now()
 );
 
@@ -83,6 +85,24 @@ create index if not exists idx_bookings_date on public.bookings(date);
 create index if not exists idx_bookings_student on public.bookings(student_id);
 create index if not exists idx_guest_passes_date on public.guest_passes(date);
 create index if not exists idx_waste_log_date on public.waste_log(date);
+create index if not exists idx_announcements_expires_at on public.announcements(expires_at);
+
+alter table public.announcements
+  add column if not exists duration_days integer not null default 1;
+
+alter table public.announcements
+  add column if not exists expires_at timestamptz;
+
+alter table public.announcements
+  drop constraint if exists announcements_duration_days_check;
+
+alter table public.announcements
+  add constraint announcements_duration_days_check
+  check (duration_days between 1 and 365);
+
+update public.announcements
+set expires_at = created_at + make_interval(days => coalesce(duration_days, 1))
+where expires_at is null;
 
 -- Trigger: create profile on signup
 create or replace function public.handle_new_user()
@@ -173,6 +193,8 @@ create policy "announcements_read" on public.announcements for select
   using (true);
 create policy "announcements_write" on public.announcements for insert
   with check (public.is_admin(auth.uid()));
+create policy "announcements_delete_own" on public.announcements for delete
+  using (created_by = auth.uid());
 
 -- Waste log
 create policy "waste_read" on public.waste_log for select using (true);

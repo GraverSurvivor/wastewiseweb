@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile
 from pydantic import BaseModel, Field
@@ -44,6 +44,7 @@ class ProfileBody(BaseModel):
 
 class AnnouncementBody(BaseModel):
     message: str = Field(min_length=1)
+    duration_days: int = Field(default=1, ge=1, le=365)
 
 
 class WasteEntry(BaseModel):
@@ -267,13 +268,42 @@ async def post_announcement(
     token, uid = auth_context(authorization)
     if not await is_admin(token, uid):
         raise HTTPException(403, "Admin only.")
+    expires_at = datetime.now(timezone.utc) + timedelta(days=body.duration_days)
     data = await sb.rest_post(
         "announcements",
         token,
-        {"message": body.message.strip(), "created_by": uid},
+        {
+            "message": body.message.strip(),
+            "created_by": uid,
+            "duration_days": body.duration_days,
+            "expires_at": expires_at.isoformat(),
+        },
     )
     row = data[0] if isinstance(data, list) else data
     return {"ok": True, "announcement": row}
+
+
+@router.delete("/admin/announcements/{announcement_id}")
+async def delete_announcement(
+    announcement_id: str,
+    authorization: str | None = Header(None),
+):
+    token, uid = auth_context(authorization)
+    if not await is_admin(token, uid):
+        raise HTTPException(403, "Admin only.")
+
+    rows = await sb.rest_get(
+        f"announcements?select=id,created_by&id=eq.{announcement_id}",
+        token,
+    )
+    row = rows[0] if isinstance(rows, list) and rows else None
+    if not row:
+        raise HTTPException(404, "Announcement not found.")
+    if row.get("created_by") != uid:
+        raise HTTPException(403, "You can delete only your own announcements.")
+
+    await sb.rest_delete(f"announcements?id=eq.{announcement_id}", token)
+    return {"ok": True}
 
 
 @router.post("/admin/waste-log")

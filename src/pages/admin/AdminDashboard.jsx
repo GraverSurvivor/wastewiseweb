@@ -13,6 +13,15 @@ import { useAuth } from '../../context/AuthContext'
 import { apiJson } from '../../lib/api'
 import { Skeleton } from '../../components/Skeleton'
 import { MEALS, toISODateLocal } from '../../utils/meals'
+import {
+  formatAnnouncementDate,
+  getAnnouncementExpiry,
+  isAnnouncementActive,
+} from '../../utils/announcements'
+
+function announcementStatus(announcement) {
+  return isAnnouncementActive(announcement) ? 'Active' : 'Expired'
+}
 
 export function AdminDashboard() {
   const { user, supabase, session } = useAuth()
@@ -21,6 +30,10 @@ export function AdminDashboard() {
   const [complaints, setComplaints] = useState([])
   const [guestToday, setGuestToday] = useState([])
   const [announcement, setAnnouncement] = useState('')
+  const [announcementDays, setAnnouncementDays] = useState('1')
+  const [announcementHistory, setAnnouncementHistory] = useState([])
+  const [pushingAnnouncement, setPushingAnnouncement] = useState(false)
+  const [deletingAnnouncementId, setDeletingAnnouncementId] = useState(null)
   const [wasteForm, setWasteForm] = useState({
     breakfast: '',
     lunch: '',
@@ -33,7 +46,7 @@ export function AdminDashboard() {
   const today = useMemo(() => toISODateLocal(new Date()), [])
 
   const load = useCallback(async () => {
-    if (!supabase) {
+    if (!supabase || !user?.id) {
       setLoading(false)
       return
     }
@@ -43,7 +56,7 @@ export function AdminDashboard() {
     weekAgo.setDate(now.getDate() - 7)
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
-    const [bRes, cRes, gRes, wk, mo] = await Promise.all([
+    const [bRes, cRes, gRes, aRes, wk, mo] = await Promise.all([
       supabase.from('bookings').select('*').eq('date', today),
       supabase
         .from('complaints')
@@ -51,6 +64,12 @@ export function AdminDashboard() {
         .order('created_at', { ascending: false })
         .limit(50),
       supabase.from('guest_passes').select('*').eq('date', today),
+      supabase
+        .from('announcements')
+        .select('*')
+        .eq('created_by', user.id)
+        .order('created_at', { ascending: false })
+        .limit(12),
       supabase
         .from('bookings')
         .select('status')
@@ -64,6 +83,7 @@ export function AdminDashboard() {
     ])
 
     setBookingsToday(bRes.data ?? [])
+    setAnnouncementHistory(aRes.data ?? [])
     const complaintsRaw = cRes.data ?? []
     const guestRaw = gRes.data ?? []
     const studentIds = [
@@ -105,7 +125,7 @@ export function AdminDashboard() {
     setWeekStats(agg(wk.data ?? []))
     setMonthStats(agg(mo.data ?? []))
     setLoading(false)
-  }, [supabase, today])
+  }, [supabase, today, user?.id])
 
   useEffect(() => {
     load()
@@ -138,15 +158,54 @@ export function AdminDashboard() {
 
   const pushAnnouncement = async () => {
     if (!session?.access_token || !user || !announcement.trim()) return
+
+    const duration = Number(announcementDays)
+    if (!Number.isInteger(duration) || duration < 1 || duration > 365) {
+      window.alert('Choose a valid announcement duration between 1 and 365 days.')
+      return
+    }
+
+    setPushingAnnouncement(true)
     try {
       await apiJson('/admin/announcements', {
         method: 'POST',
         token: session.access_token,
-        body: { message: announcement.trim() },
+        body: {
+          message: announcement.trim(),
+          duration_days: duration,
+        },
       })
       setAnnouncement('')
+      setAnnouncementDays('1')
+      await load()
     } catch (e) {
       window.alert(e?.message || 'Could not push announcement.')
+    } finally {
+      setPushingAnnouncement(false)
+    }
+  }
+
+  const deleteAnnouncement = async (announcementId) => {
+    if (!session?.access_token || !announcementId) return
+
+    const confirmed = window.confirm(
+      'Delete this announcement now? It will be removed from the student app immediately.',
+    )
+    if (!confirmed) return
+
+    setDeletingAnnouncementId(announcementId)
+    try {
+      await apiJson(`/admin/announcements/${announcementId}`, {
+        method: 'DELETE',
+        token: session.access_token,
+      })
+      setAnnouncementHistory((current) =>
+        current.filter((item) => item.id !== announcementId),
+      )
+    } catch (e) {
+      window.alert(e?.message || 'Could not delete announcement.')
+    } finally {
+      setDeletingAnnouncementId(null)
     }
   }
 
@@ -295,13 +354,89 @@ export function AdminDashboard() {
               value={announcement}
               onChange={(e) => setAnnouncement(e.target.value)}
             />
+            <label className="block text-xs font-medium text-slate-600">
+              Show this announcement for how many days?
+              <input
+                type="number"
+                min="1"
+                max="365"
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                value={announcementDays}
+                onChange={(e) => setAnnouncementDays(e.target.value)}
+              />
+            </label>
             <button
               type="button"
               onClick={pushAnnouncement}
-              className="rounded-xl bg-admin px-4 py-2 text-sm font-semibold text-white"
+              disabled={pushingAnnouncement || !announcement.trim()}
+              className="interactive-button rounded-xl bg-admin px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Push announcement
+              {pushingAnnouncement ? 'Pushing...' : 'Push announcement'}
             </button>
+
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-slate-800">
+                  Your previous announcements
+                </h3>
+                <span className="text-xs text-slate-500">
+                  {announcementHistory.length} shown
+                </span>
+              </div>
+
+              <ul className="mt-3 space-y-2 text-sm">
+                {announcementHistory.length === 0 && (
+                  <li className="rounded-xl bg-white px-3 py-2 text-slate-500">
+                    No announcements posted yet.
+                  </li>
+                )}
+
+                {announcementHistory.map((item) => {
+                  const expiry = getAnnouncementExpiry(item)
+                  const active = isAnnouncementActive(item)
+
+                  return (
+                    <li
+                      key={item.id}
+                      className="rounded-xl bg-white px-3 py-3 shadow-sm"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                              active
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-slate-200 text-slate-600'
+                            }`}
+                          >
+                            {announcementStatus(item)}
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            Posted {formatAnnouncementDate(item.created_at)}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => deleteAnnouncement(item.id)}
+                          disabled={deletingAnnouncementId === item.id}
+                          className="interactive-button rounded-lg border border-rose-200 px-3 py-1 text-[11px] font-semibold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {deletingAnnouncementId === item.id
+                            ? 'Deleting...'
+                            : 'Delete'}
+                        </button>
+                      </div>
+                      <p className="mt-2 text-slate-800">{item.message}</p>
+                      <p className="mt-2 text-xs text-slate-500">
+                        Visible for {item.duration_days || 1} day
+                        {Number(item.duration_days || 1) > 1 ? 's' : ''} until{' '}
+                        {formatAnnouncementDate(expiry)}
+                      </p>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">

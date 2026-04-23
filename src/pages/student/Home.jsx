@@ -11,17 +11,38 @@ import {
   canCancelBooking,
   toISODateLocal,
 } from '../../utils/meals'
+import {
+  formatAnnouncementDate,
+  getAnnouncementExpiry,
+  isAnnouncementActive,
+} from '../../utils/announcements'
 import { requestNotifyPermission, scheduleMealEndReminder } from '../../utils/notifications'
 
 function todayInRange(isoDate, from, to) {
   return isoDate >= from && isoDate <= to
 }
 
+function readDismissedAnnouncements() {
+  if (typeof localStorage === 'undefined') return []
+
+  const raw = localStorage.getItem('ww_banner_dismissed')
+  if (!raw) return []
+
+  try {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) return parsed.map(String)
+  } catch {
+    return [String(raw)]
+  }
+
+  return []
+}
+
 export function StudentHome() {
   const { student, supabase, session } = useAuth()
   const [bookings, setBookings] = useState([])
   const [leaveRows, setLeaveRows] = useState([])
-  const [announcement, setAnnouncement] = useState(null)
+  const [announcements, setAnnouncements] = useState([])
   const [stats, setStats] = useState({
     attended: 0,
     noshow: 0,
@@ -30,10 +51,8 @@ export function StudentHome() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(null)
   const [confirmMeal, setConfirmMeal] = useState(null)
-  const [bannerDismissed, setBannerDismissed] = useState(() =>
-    typeof localStorage !== 'undefined'
-      ? localStorage.getItem('ww_banner_dismissed')
-      : null,
+  const [dismissedAnnouncements, setDismissedAnnouncements] = useState(
+    readDismissedAnnouncements,
   )
 
   const today = useMemo(() => toISODateLocal(new Date()), [])
@@ -75,8 +94,7 @@ export function StudentHome() {
         .from('announcements')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
+        .limit(20),
       supabase
         .from('bookings')
         .select('id', { count: 'exact', head: true })
@@ -100,7 +118,9 @@ export function StudentHome() {
 
     if (bRes.data) setBookings(bRes.data)
     if (lRes.data) setLeaveRows(lRes.data)
-    if (aRes.data) setAnnouncement(aRes.data)
+    if (aRes.data) {
+      setAnnouncements(aRes.data.filter((item) => item?.id))
+    }
     setStats({
       attended: attRes.count ?? 0,
       noshow: nsRes.count ?? 0,
@@ -114,7 +134,44 @@ export function StudentHome() {
   }, [load])
 
   useEffect(() => {
+    if (!supabase || !student?.id) return
+
+    const channel = supabase
+      .channel(`student-announcements-${student.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'announcements' },
+        () => {
+          load()
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [supabase, student?.id, load])
+
+  useEffect(() => {
     requestNotifyPermission()
+  }, [])
+
+  useEffect(() => {
+    if (typeof localStorage === 'undefined') return
+    localStorage.setItem(
+      'ww_banner_dismissed',
+      JSON.stringify(dismissedAnnouncements),
+    )
+  }, [dismissedAnnouncements])
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setAnnouncements((current) =>
+        current.filter((item) => item?.id && isAnnouncementActive(item)),
+      )
+    }, 30000)
+
+    return () => window.clearInterval(intervalId)
   }, [])
 
   useEffect(() => {
@@ -141,6 +198,15 @@ export function StudentHome() {
     })
     return map
   }, [bookings])
+
+  const visibleAnnouncements = useMemo(() => {
+    return announcements.filter(
+      (item) =>
+        item?.message &&
+        isAnnouncementActive(item) &&
+        !dismissedAnnouncements.includes(String(item.id)),
+    )
+  }, [announcements, dismissedAnnouncements])
 
   const bookMeal = async (mealKey) => {
     if (!session?.access_token || !student || onLeaveToday || isBookingClosed(mealKey))
@@ -197,22 +263,28 @@ export function StudentHome() {
     )
   }
 
-  const showBanner =
-    announcement?.message &&
-    bannerDismissed !== announcement.id &&
-    typeof announcement.id !== 'undefined'
-
   return (
     <div className="space-y-4 pb-4">
-      {showBanner && (
-        <AnnouncementBanner
-          message={announcement.message}
-          onDismiss={() => {
-            setBannerDismissed(announcement.id)
-            localStorage.setItem('ww_banner_dismissed', String(announcement.id))
-          }}
-        />
-      )}
+      {visibleAnnouncements.map((item) => {
+        const expiry = getAnnouncementExpiry(item)
+
+        return (
+          <AnnouncementBanner
+            key={item.id}
+            message={item.message}
+            meta={
+              expiry
+                ? `Visible until ${formatAnnouncementDate(expiry)}`
+                : 'Campus update'
+            }
+            onDismiss={() => {
+              setDismissedAnnouncements((current) => [
+                ...new Set([...current, String(item.id)]),
+              ])
+            }}
+          />
+        )
+      })}
 
       <header className="rounded-2xl bg-primary px-4 py-4 text-white shadow-lg shadow-primary/20">
         <p className="text-sm text-white/85">Hello,</p>

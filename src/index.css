@@ -17,6 +17,24 @@
   }
 }
 
+@layer components {
+  .interactive-button {
+    @apply transition-[transform,box-shadow,background-color,border-color,color] duration-200 ease-out will-change-transform motion-reduce:transform-none motion-reduce:transition-none;
+  }
+
+  .interactive-button:hover:not(:disabled) {
+    transform: translateY(-1px) scale(1.03);
+  }
+
+  .interactive-button:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .interactive-button:focus-visible {
+    @apply outline-none ring-2 ring-primary/25 ring-offset-2;
+  }
+}
+
 /* smooth route transitions */
 .page-enter {
   animation: pageIn 0.35s ease-out both;

@@ -81,6 +81,25 @@ async def rest_patch(path: str, access_token: str, body: Any) -> Any:
         return None
 
 
+async def rest_delete(path: str, access_token: str) -> Any:
+    s = get_settings()
+    url = f"{s.supabase_url}/rest/v1/{path}"
+    h = _headers(
+        access_token,
+        {"Prefer": "return=representation"},
+    )
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.delete(url, headers=h)
+    if r.status_code >= 400:
+        raise RuntimeError(r.text or r.reason_phrase)
+    if not r.content:
+        return None
+    try:
+        return r.json()
+    except json.JSONDecodeError:
+        return None
+
+
 async def storage_upload(
     access_token: str,
     bucket: str,

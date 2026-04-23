@@ -15,9 +15,6 @@ import { Scanner } from './pages/Scanner'
 import { Skeleton } from './components/Skeleton'
 import { ResetPassword } from './pages/ResetPassword'
 
-// inside your routes:
-<Route path="/reset-password" element={<ResetPassword />} />
-
 function RequireAuth({ children }) {
   const { session, loading } = useAuth()
   const location = useLocation()
@@ -51,6 +48,7 @@ function RequireAdmin({ children }) {
 function AppRoutes() {
   return (
     <Routes>
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/login" element={<Login />} />
       <Route
         path="/scanner"
