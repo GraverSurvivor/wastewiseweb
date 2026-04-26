@@ -429,12 +429,6 @@ export function Login() {
               <code className="rounded bg-slate-100 px-1">admin</code>.
             </p>
           </div>
-
-          <p className="text-center text-xs text-slate-400">
-            <Link to="/scanner" className="underline hover:text-slate-600">
-              Open gate scanner
-            </Link>
-          </p>
         </div>
       </div>
 
