@@ -42,7 +42,7 @@ class AnnouncementBody(BaseModel):
 
 class WasteEntry(BaseModel):
     meal_type: str
-    waste_kg: float
+    waste_kg: float = Field(ge=0)
 
 
 class WasteLogBody(BaseModel):

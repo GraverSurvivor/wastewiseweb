@@ -19,6 +19,24 @@ import {
   isAnnouncementActive,
 } from '../../utils/announcements'
 
+const EMPTY_WASTE_FORM = {
+  breakfast: '',
+  lunch: '',
+  snacks: '',
+  dinner: '',
+}
+
+function wasteFormFromRows(rows) {
+  const next = { ...EMPTY_WASTE_FORM }
+
+  for (const row of rows ?? []) {
+    if (!row?.meal_type || !(row.meal_type in next)) continue
+    next[row.meal_type] = String(row.waste_kg ?? '')
+  }
+
+  return next
+}
+
 function announcementStatus(announcement) {
   return isAnnouncementActive(announcement) ? 'Active' : 'Expired'
 }
@@ -33,12 +51,9 @@ export function AdminDashboard() {
   const [announcementHistory, setAnnouncementHistory] = useState([])
   const [pushingAnnouncement, setPushingAnnouncement] = useState(false)
   const [deletingAnnouncementId, setDeletingAnnouncementId] = useState(null)
-  const [wasteForm, setWasteForm] = useState({
-    breakfast: '',
-    lunch: '',
-    snacks: '',
-    dinner: '',
-  })
+  const [wasteForm, setWasteForm] = useState(EMPTY_WASTE_FORM)
+  const [savingWaste, setSavingWaste] = useState(false)
+  const [wasteMessage, setWasteMessage] = useState(null)
   const [weekStats, setWeekStats] = useState({ attended: 0, noshow: 0 })
   const [monthStats, setMonthStats] = useState({ attended: 0, noshow: 0 })
 
@@ -56,7 +71,7 @@ export function AdminDashboard() {
     weekAgo.setDate(now.getDate() - 7)
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
-    const [bookingsRes, complaintsRes, announcementsRes, weekRes, monthRes] =
+    const [bookingsRes, complaintsRes, announcementsRes, wasteRes, weekRes, monthRes] =
       await Promise.all([
         supabase.from('bookings').select('*').eq('date', today),
         supabase
@@ -71,6 +86,10 @@ export function AdminDashboard() {
           .order('created_at', { ascending: false })
           .limit(12),
         supabase
+          .from('waste_log')
+          .select('meal_type, waste_kg')
+          .eq('date', today),
+        supabase
           .from('bookings')
           .select('status')
           .gte('date', toISODateLocal(weekAgo))
@@ -84,6 +103,7 @@ export function AdminDashboard() {
 
     setBookingsToday(bookingsRes.data ?? [])
     setAnnouncementHistory(announcementsRes.data ?? [])
+    setWasteForm(wasteFormFromRows(wasteRes.data))
 
     const complaintsRaw = complaintsRes.data ?? []
     const studentIds = [...new Set(complaintsRaw.map((item) => item.student_id))]
@@ -213,21 +233,38 @@ export function AdminDashboard() {
       const value = wasteForm[meal.key]
       if (value === '' || value === undefined) continue
       const numberValue = Number(value)
-      if (Number.isNaN(numberValue)) continue
+      if (Number.isNaN(numberValue) || numberValue < 0) continue
       entries.push({ meal_type: meal.key, waste_kg: numberValue })
     }
 
-    if (entries.length === 0) return
+    if (entries.length === 0) {
+      setWasteMessage({
+        type: 'error',
+        text: 'Enter at least one valid waste value in kilograms.',
+      })
+      return
+    }
 
+    setSavingWaste(true)
+    setWasteMessage(null)
     try {
       await apiJson('/admin/waste-log', {
         method: 'POST',
         token: session.access_token,
         body: { date: today, entries },
       })
-      setWasteForm({ breakfast: '', lunch: '', snacks: '', dinner: '' })
+      await load()
+      setWasteMessage({
+        type: 'success',
+        text: 'Today’s waste entries were saved successfully.',
+      })
     } catch (error) {
-      window.alert(error?.message || 'Could not save waste log.')
+      setWasteMessage({
+        type: 'error',
+        text: error?.message || 'Could not save waste log.',
+      })
+    } finally {
+      setSavingWaste(false)
     }
   }
 
@@ -440,6 +477,20 @@ export function AdminDashboard() {
 
           <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-semibold">Daily waste log (kg)</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Saved values for today stay visible here, so you can confirm or update them.
+            </p>
+            {wasteMessage && (
+              <div
+                className={`mt-3 rounded-xl px-3 py-2 text-sm ${
+                  wasteMessage.type === 'success'
+                    ? 'bg-emerald-50 text-emerald-900'
+                    : 'bg-rose-50 text-rose-800'
+                }`}
+              >
+                {wasteMessage.text}
+              </div>
+            )}
             <form onSubmit={saveWaste} className="mt-2 grid gap-2 sm:grid-cols-2">
               {MEALS.map((meal) => (
                 <label
@@ -454,20 +505,22 @@ export function AdminDashboard() {
                     className="mt-1 w-full rounded-xl border border-slate-200 px-2 py-2 text-sm"
                     placeholder="kg"
                     value={wasteForm[meal.key]}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      setWasteMessage(null)
                       setWasteForm((current) => ({
                         ...current,
                         [meal.key]: e.target.value,
                       }))
-                    }
+                    }}
                   />
                 </label>
               ))}
               <button
                 type="submit"
-                className="sm:col-span-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-white"
+                disabled={savingWaste}
+                className="sm:col-span-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Save waste entries
+                {savingWaste ? 'Saving...' : 'Save waste entries'}
               </button>
             </form>
           </section>
