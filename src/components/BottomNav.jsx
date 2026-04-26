@@ -3,7 +3,6 @@ import {
   Home,
   UtensilsCrossed,
   Leaf,
-  Ticket,
   User,
 } from './icons/Icons'
 
@@ -11,7 +10,6 @@ const links = [
   { to: '/app', end: true, label: 'Home', Icon: Home },
   { to: '/app/menu', label: 'Menu', Icon: UtensilsCrossed },
   { to: '/app/sustainability', label: 'Green', Icon: Leaf },
-  { to: '/app/guest', label: 'Guest', Icon: Ticket },
   { to: '/app/profile', label: 'Profile', Icon: User },
 ]
 

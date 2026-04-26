@@ -25,9 +25,6 @@ export const MEALS = [
   },
 ]
 
-const GUEST_MEAL_PRICE = 80
-export { GUEST_MEAL_PRICE }
-
 function atToday(d, { h, m }) {
   const x = new Date(d)
   x.setHours(h, m, 0, 0)

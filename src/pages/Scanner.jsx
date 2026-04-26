@@ -11,7 +11,6 @@ import {
 export function Scanner() {
   const { session, isAdmin } = useAuth()
   const [roll, setRoll] = useState('')
-  const [guestQr, setGuestQr] = useState('')
   const [mealOverride, setMealOverride] = useState('')
   const [result, setResult] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -21,23 +20,26 @@ export function Scanner() {
   const effectiveMeal = mealOverride || activeMeal
 
   const headerMealLabel = useMemo(() => {
-    if (effectiveMeal)
-      return MEALS.find((m) => m.key === effectiveMeal)?.label ?? effectiveMeal
+    if (effectiveMeal) {
+      return MEALS.find((meal) => meal.key === effectiveMeal)?.label ?? effectiveMeal
+    }
     return 'Between meals'
   }, [effectiveMeal])
 
   const scanStudent = async (e) => {
     e.preventDefault()
     setResult(null)
+
     if (!session?.access_token || !roll.trim() || !effectiveMeal) {
       setResult({
         ok: false,
         msg: !effectiveMeal
-          ? 'Pick a meal slot below — no serving window right now.'
+          ? 'Pick a meal slot below - no serving window right now.'
           : 'Enter roll number.',
       })
       return
     }
+
     setBusy(true)
     try {
       const data = await apiJson('/scanner/student', {
@@ -54,43 +56,8 @@ export function Scanner() {
         msg: data.message || (data.granted ? 'OK' : 'Denied'),
       })
       if (data.granted) setRoll('')
-    } catch (err) {
-      setResult({ ok: false, msg: err?.message || 'Request failed.' })
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const scanGuest = async (e) => {
-    e.preventDefault()
-    setResult(null)
-    if (!session?.access_token || !guestQr.trim() || !effectiveMeal) {
-      setResult({
-        ok: false,
-        msg: !effectiveMeal
-          ? 'Pick a meal slot for guest entry.'
-          : 'Enter guest QR string.',
-      })
-      return
-    }
-    setBusy(true)
-    try {
-      const data = await apiJson('/scanner/guest', {
-        method: 'POST',
-        token: session.access_token,
-        body: {
-          qr_code: guestQr.trim(),
-          meal_type: effectiveMeal,
-          date: today,
-        },
-      })
-      setResult({
-        ok: data.granted,
-        msg: data.message || (data.granted ? 'OK' : 'Denied'),
-      })
-      if (data.granted) setGuestQr('')
-    } catch (err) {
-      setResult({ ok: false, msg: err?.message || 'Request failed.' })
+    } catch (error) {
+      setResult({ ok: false, msg: error?.message || 'Request failed.' })
     } finally {
       setBusy(false)
     }
@@ -108,7 +75,7 @@ export function Scanner() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-slate-950 px-3 py-6 text-slate-100 page-enter">
+    <div className="page-enter min-h-[100dvh] bg-slate-950 px-3 py-6 text-slate-100">
       <div className="mx-auto max-w-[390px] space-y-5">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold tracking-tight text-white">
@@ -134,9 +101,9 @@ export function Scanner() {
               onChange={(e) => setMealOverride(e.target.value)}
             >
               <option value="">Auto (serving window)</option>
-              {MEALS.map((m) => (
-                <option key={m.key} value={m.key}>
-                  {m.label}
+              {MEALS.map((meal) => (
+                <option key={meal.key} value={meal.key}>
+                  {meal.label}
                 </option>
               ))}
             </select>
@@ -145,7 +112,7 @@ export function Scanner() {
 
         <form
           onSubmit={scanStudent}
-          className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 space-y-3"
+          className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4"
         >
           <h2 className="text-sm font-semibold text-white">Student roll / ID</h2>
           <input
@@ -161,26 +128,6 @@ export function Scanner() {
             className="w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white disabled:opacity-50"
           >
             Check booking
-          </button>
-        </form>
-
-        <form
-          onSubmit={scanGuest}
-          className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 space-y-3"
-        >
-          <h2 className="text-sm font-semibold text-white">Guest QR</h2>
-          <input
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm text-white outline-none ring-sky-500/40 focus:ring-2"
-            placeholder="Paste WASTEWISE:… string"
-            value={guestQr}
-            onChange={(e) => setGuestQr(e.target.value)}
-          />
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full rounded-xl bg-sky-700 py-3 text-sm font-bold text-white disabled:opacity-50"
-          >
-            Verify guest
           </button>
         </form>
 

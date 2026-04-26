@@ -28,7 +28,6 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [bookingsToday, setBookingsToday] = useState([])
   const [complaints, setComplaints] = useState([])
-  const [guestToday, setGuestToday] = useState([])
   const [announcement, setAnnouncement] = useState('')
   const [announcementDays, setAnnouncementDays] = useState('1')
   const [announcementHistory, setAnnouncementHistory] = useState([])
@@ -50,80 +49,74 @@ export function AdminDashboard() {
       setLoading(false)
       return
     }
+
     setLoading(true)
     const now = new Date()
     const weekAgo = new Date(now)
     weekAgo.setDate(now.getDate() - 7)
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
-    const [bRes, cRes, gRes, aRes, wk, mo] = await Promise.all([
-      supabase.from('bookings').select('*').eq('date', today),
-      supabase
-        .from('complaints')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50),
-      supabase.from('guest_passes').select('*').eq('date', today),
-      supabase
-        .from('announcements')
-        .select('*')
-        .eq('created_by', user.id)
-        .order('created_at', { ascending: false })
-        .limit(12),
-      supabase
-        .from('bookings')
-        .select('status')
-        .gte('date', toISODateLocal(weekAgo))
-        .lte('date', today),
-      supabase
-        .from('bookings')
-        .select('status')
-        .gte('date', toISODateLocal(monthStart))
-        .lte('date', today),
-    ])
+    const [bookingsRes, complaintsRes, announcementsRes, weekRes, monthRes] =
+      await Promise.all([
+        supabase.from('bookings').select('*').eq('date', today),
+        supabase
+          .from('complaints')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50),
+        supabase
+          .from('announcements')
+          .select('*')
+          .eq('created_by', user.id)
+          .order('created_at', { ascending: false })
+          .limit(12),
+        supabase
+          .from('bookings')
+          .select('status')
+          .gte('date', toISODateLocal(weekAgo))
+          .lte('date', today),
+        supabase
+          .from('bookings')
+          .select('status')
+          .gte('date', toISODateLocal(monthStart))
+          .lte('date', today),
+      ])
 
-    setBookingsToday(bRes.data ?? [])
-    setAnnouncementHistory(aRes.data ?? [])
-    const complaintsRaw = cRes.data ?? []
-    const guestRaw = gRes.data ?? []
-    const studentIds = [
-      ...new Set([
-        ...complaintsRaw.map((c) => c.student_id),
-        ...guestRaw.map((g) => g.student_id),
-      ]),
-    ]
+    setBookingsToday(bookingsRes.data ?? [])
+    setAnnouncementHistory(announcementsRes.data ?? [])
+
+    const complaintsRaw = complaintsRes.data ?? []
+    const studentIds = [...new Set(complaintsRaw.map((item) => item.student_id))]
     let studentMap = {}
+
     if (studentIds.length) {
-      const { data: studs } = await supabase
+      const { data: students } = await supabase
         .from('students')
         .select('id, name, roll_number')
         .in('id', studentIds)
-      studentMap = Object.fromEntries((studs ?? []).map((s) => [s.id, s]))
+
+      studentMap = Object.fromEntries((students ?? []).map((s) => [s.id, s]))
     }
+
     setComplaints(
-      complaintsRaw.map((c) => ({
-        ...c,
-        students: studentMap[c.student_id],
-      })),
-    )
-    setGuestToday(
-      guestRaw.map((g) => ({
-        ...g,
-        students: studentMap[g.student_id],
+      complaintsRaw.map((item) => ({
+        ...item,
+        students: studentMap[item.student_id],
       })),
     )
 
-    const agg = (rows) =>
+    const aggregate = (rows) =>
       rows.reduce(
-        (a, r) => {
-          if (r.status === 'attended') a.attended += 1
-          if (r.status === 'no_show') a.noshow += 1
-          return a
+        (acc, row) => {
+          if (row.status === 'attended') acc.attended += 1
+          if (row.status === 'no_show') acc.noshow += 1
+          return acc
         },
         { attended: 0, noshow: 0 },
       )
-    setWeekStats(agg(wk.data ?? []))
-    setMonthStats(agg(mo.data ?? []))
+
+    setWeekStats(aggregate(weekRes.data ?? []))
+    setMonthStats(aggregate(monthRes.data ?? []))
     setLoading(false)
   }, [supabase, today, user?.id])
 
@@ -132,28 +125,30 @@ export function AdminDashboard() {
   }, [load])
 
   const mealStats = useMemo(() => {
-    const base = MEALS.map((m) => ({
-      meal: m.label,
+    const base = MEALS.map((meal) => ({
+      meal: meal.label,
       booked: 0,
       attended: 0,
       noshow: 0,
     }))
-    const idx = Object.fromEntries(MEALS.map((m, i) => [m.key, i]))
-    bookingsToday.forEach((b) => {
-      const i = idx[b.meal_type]
-      if (i === undefined) return
-      if (b.status === 'booked') base[i].booked += 1
-      if (b.status === 'attended') base[i].attended += 1
-      if (b.status === 'no_show') base[i].noshow += 1
+    const indexByMeal = Object.fromEntries(MEALS.map((meal, idx) => [meal.key, idx]))
+
+    bookingsToday.forEach((booking) => {
+      const idx = indexByMeal[booking.meal_type]
+      if (idx === undefined) return
+      if (booking.status === 'booked') base[idx].booked += 1
+      if (booking.status === 'attended') base[idx].attended += 1
+      if (booking.status === 'no_show') base[idx].noshow += 1
     })
+
     return base
   }, [bookingsToday])
 
-  const barData = mealStats.map((m) => ({
-    name: m.meal,
-    Booked: m.booked,
-    Attended: m.attended,
-    'No-show': m.noshow,
+  const barData = mealStats.map((meal) => ({
+    name: meal.meal,
+    Booked: meal.booked,
+    Attended: meal.attended,
+    'No-show': meal.noshow,
   }))
 
   const pushAnnouncement = async () => {
@@ -178,8 +173,8 @@ export function AdminDashboard() {
       setAnnouncement('')
       setAnnouncementDays('1')
       await load()
-    } catch (e) {
-      window.alert(e?.message || 'Could not push announcement.')
+    } catch (error) {
+      window.alert(error?.message || 'Could not push announcement.')
     } finally {
       setPushingAnnouncement(false)
     }
@@ -202,8 +197,8 @@ export function AdminDashboard() {
       setAnnouncementHistory((current) =>
         current.filter((item) => item.id !== announcementId),
       )
-    } catch (e) {
-      window.alert(e?.message || 'Could not delete announcement.')
+    } catch (error) {
+      window.alert(error?.message || 'Could not delete announcement.')
     } finally {
       setDeletingAnnouncementId(null)
     }
@@ -212,15 +207,18 @@ export function AdminDashboard() {
   const saveWaste = async (e) => {
     e.preventDefault()
     if (!session?.access_token || !user) return
+
     const entries = []
-    for (const m of MEALS) {
-      const v = wasteForm[m.key]
-      if (v === '' || v === undefined) continue
-      const n = Number(v)
-      if (Number.isNaN(n)) continue
-      entries.push({ meal_type: m.key, waste_kg: n })
+    for (const meal of MEALS) {
+      const value = wasteForm[meal.key]
+      if (value === '' || value === undefined) continue
+      const numberValue = Number(value)
+      if (Number.isNaN(numberValue)) continue
+      entries.push({ meal_type: meal.key, waste_kg: numberValue })
     }
+
     if (entries.length === 0) return
+
     try {
       await apiJson('/admin/waste-log', {
         method: 'POST',
@@ -228,13 +226,14 @@ export function AdminDashboard() {
         body: { date: today, entries },
       })
       setWasteForm({ breakfast: '', lunch: '', snacks: '', dinner: '' })
-    } catch (err) {
-      window.alert(err?.message || 'Could not save waste log.')
+    } catch (error) {
+      window.alert(error?.message || 'Could not save waste log.')
     }
   }
 
   const setComplaintStatus = async (id, status) => {
     if (!session?.access_token) return
+
     try {
       await apiJson(`/admin/complaints/${id}/status`, {
         method: 'PATCH',
@@ -242,8 +241,8 @@ export function AdminDashboard() {
         body: { status },
       })
       await load()
-    } catch (e) {
-      window.alert(e?.message || 'Could not update complaint.')
+    } catch (error) {
+      window.alert(error?.message || 'Could not update complaint.')
     }
   }
 
@@ -273,14 +272,14 @@ export function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {mealStats.map((m) => (
-                    <tr key={m.meal} className="border-b border-slate-100">
+                  {mealStats.map((meal) => (
+                    <tr key={meal.meal} className="border-b border-slate-100">
                       <td className="py-2 pr-2 font-medium text-slate-800">
-                        {m.meal}
+                        {meal.meal}
                       </td>
-                      <td className="py-2 text-primary">{m.booked}</td>
-                      <td className="py-2 text-emerald-700">{m.attended}</td>
-                      <td className="py-2 text-rose-600">{m.noshow}</td>
+                      <td className="py-2 text-primary">{meal.booked}</td>
+                      <td className="py-2 text-emerald-700">{meal.attended}</td>
+                      <td className="py-2 text-rose-600">{meal.noshow}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -346,7 +345,7 @@ export function AdminDashboard() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-2">
+          <section className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-semibold">Broadcast</h2>
             <textarea
               className="min-h-[72px] w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
@@ -440,39 +439,26 @@ export function AdminDashboard() {
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-semibold">Guest passes today</h2>
-            <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto text-sm">
-              {guestToday.length === 0 && (
-                <li className="text-slate-500">No passes for today.</li>
-              )}
-              {guestToday.map((g) => (
-                <li
-                  key={g.id}
-                  className="rounded-xl bg-slate-50 px-3 py-2 text-slate-800"
-                >
-                  <span className="font-medium">{g.guest_name}</span> —{' '}
-                  {g.students?.name} ({g.students?.roll_number}) • {g.meal_type}{' '}
-                  • <span className="text-admin">{g.payment_status}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-semibold">Daily waste log (kg)</h2>
             <form onSubmit={saveWaste} className="mt-2 grid gap-2 sm:grid-cols-2">
-              {MEALS.map((m) => (
-                <label key={m.key} className="text-xs font-medium text-slate-600">
-                  {m.label}
+              {MEALS.map((meal) => (
+                <label
+                  key={meal.key}
+                  className="text-xs font-medium text-slate-600"
+                >
+                  {meal.label}
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     className="mt-1 w-full rounded-xl border border-slate-200 px-2 py-2 text-sm"
                     placeholder="kg"
-                    value={wasteForm[m.key]}
+                    value={wasteForm[meal.key]}
                     onChange={(e) =>
-                      setWasteForm((f) => ({ ...f, [m.key]: e.target.value }))
+                      setWasteForm((current) => ({
+                        ...current,
+                        [meal.key]: e.target.value,
+                      }))
                     }
                   />
                 </label>
@@ -489,18 +475,20 @@ export function AdminDashboard() {
           <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-semibold">Complaints</h2>
             <ul className="mt-2 space-y-3 text-sm">
-              {complaints.map((c) => (
+              {complaints.map((complaint) => (
                 <li
-                  key={c.id}
+                  key={complaint.id}
                   className="rounded-xl border border-slate-100 bg-slate-50/80 p-3"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-semibold text-slate-900">{c.title}</p>
+                    <p className="font-semibold text-slate-900">
+                      {complaint.title}
+                    </p>
                     <select
                       className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs"
-                      value={c.status}
+                      value={complaint.status}
                       onChange={(e) =>
-                        setComplaintStatus(c.id, e.target.value)
+                        setComplaintStatus(complaint.id, e.target.value)
                       }
                     >
                       <option value="open">Open</option>
@@ -508,9 +496,9 @@ export function AdminDashboard() {
                       <option value="resolved">Resolved</option>
                     </select>
                   </div>
-                  <p className="text-slate-600">{c.description}</p>
+                  <p className="text-slate-600">{complaint.description}</p>
                   <p className="text-[10px] text-slate-400">
-                    {c.students?.name} • {c.students?.roll_number}
+                    {complaint.students?.name} - {complaint.students?.roll_number}
                   </p>
                 </li>
               ))}

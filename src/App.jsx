@@ -7,7 +7,6 @@ import { AdminLayout } from './components/AdminLayout'
 import { StudentHome } from './pages/student/Home'
 import { MenuPage } from './pages/student/Menu'
 import { SustainabilityPage } from './pages/student/Sustainability'
-import { GuestPassPage } from './pages/student/GuestPass'
 import { ProfilePage } from './pages/student/Profile'
 import { ComplaintsPage } from './pages/student/Complaints'
 import { AdminDashboard } from './pages/admin/AdminDashboard'
@@ -81,7 +80,6 @@ function AppRoutes() {
         <Route index element={<StudentHome />} />
         <Route path="menu" element={<MenuPage />} />
         <Route path="sustainability" element={<SustainabilityPage />} />
-        <Route path="guest" element={<GuestPassPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="complaints" element={<ComplaintsPage />} />
       </Route>

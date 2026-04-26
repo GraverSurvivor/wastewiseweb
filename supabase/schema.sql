@@ -30,19 +30,6 @@ create table if not exists public.bookings (
   unique (student_id, meal_type, date)
 );
 
-create table if not exists public.guest_passes (
-  id uuid primary key default gen_random_uuid(),
-  student_id uuid not null references public.students(id) on delete cascade,
-  guest_name text not null,
-  relation text not null,
-  meal_type text not null check (meal_type in ('breakfast', 'lunch', 'snacks', 'dinner')),
-  date date not null,
-  qr_code text not null unique,
-  payment_status text not null default 'pending' check (payment_status in ('pending', 'paid')),
-  scanned_at timestamptz,
-  created_at timestamptz default now()
-);
-
 create table if not exists public.complaints (
   id uuid primary key default gen_random_uuid(),
   student_id uuid not null references public.students(id) on delete cascade,
@@ -83,7 +70,6 @@ create table if not exists public.leave_requests (
 -- Indexes
 create index if not exists idx_bookings_date on public.bookings(date);
 create index if not exists idx_bookings_student on public.bookings(student_id);
-create index if not exists idx_guest_passes_date on public.guest_passes(date);
 create index if not exists idx_waste_log_date on public.waste_log(date);
 create index if not exists idx_announcements_expires_at on public.announcements(expires_at);
 
@@ -125,7 +111,6 @@ create trigger on_auth_user_created
 alter table public.profiles enable row level security;
 alter table public.students enable row level security;
 alter table public.bookings enable row level security;
-alter table public.guest_passes enable row level security;
 alter table public.complaints enable row level security;
 alter table public.announcements enable row level security;
 alter table public.waste_log enable row level security;
@@ -157,17 +142,6 @@ create policy "students_update" on public.students for update
 
 -- Bookings
 create policy "bookings_all_student" on public.bookings for all
-  using (
-    student_id = public.current_student_id()
-    or public.is_admin(auth.uid())
-  )
-  with check (
-    student_id = public.current_student_id()
-    or public.is_admin(auth.uid())
-  );
-
--- Guest passes
-create policy "guest_passes_all" on public.guest_passes for all
   using (
     student_id = public.current_student_id()
     or public.is_admin(auth.uid())

@@ -46,7 +46,6 @@ export function StudentHome() {
   const [stats, setStats] = useState({
     attended: 0,
     noshow: 0,
-    guests: 0,
   })
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(null)
@@ -79,7 +78,6 @@ export function StudentHome() {
       aRes,
       attRes,
       nsRes,
-      gRes,
     ] = await Promise.all([
       supabase
         .from('bookings')
@@ -109,11 +107,6 @@ export function StudentHome() {
         .eq('status', 'no_show')
         .gte('date', isoStart)
         .lte('date', isoEnd),
-      supabase
-        .from('guest_passes')
-        .select('id', { count: 'exact', head: true })
-        .eq('student_id', student.id)
-        .gte('created_at', startOfMonth.toISOString()),
     ])
 
     if (bRes.data) setBookings(bRes.data)
@@ -124,7 +117,6 @@ export function StudentHome() {
     setStats({
       attended: attRes.count ?? 0,
       noshow: nsRes.count ?? 0,
-      guests: gRes.count ?? 0,
     })
     setLoading(false)
   }, [supabase, student?.id, today])
@@ -386,7 +378,7 @@ export function StudentHome() {
 
       <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-700">This month</h2>
-        <div className="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
+        <div className="mt-3 grid grid-cols-2 gap-2 text-center text-sm">
           <div className="rounded-xl bg-slate-50 py-3">
             <p className="text-lg font-bold text-primary">{stats.attended}</p>
             <p className="text-[10px] text-slate-500">Meals attended</p>
@@ -394,10 +386,6 @@ export function StudentHome() {
           <div className="rounded-xl bg-slate-50 py-3">
             <p className="text-lg font-bold text-rose-600">{stats.noshow}</p>
             <p className="text-[10px] text-slate-500">No-shows</p>
-          </div>
-          <div className="rounded-xl bg-slate-50 py-3">
-            <p className="text-lg font-bold text-admin">{stats.guests}</p>
-            <p className="text-[10px] text-slate-500">Guest passes</p>
           </div>
         </div>
       </section>
