@@ -32,17 +32,33 @@ const BOOKING_CUTOFF_MINUTES = {
   dinner: 15,
 }
 
-function atToday(d, { h, m }) {
-  const x = new Date(d)
-  x.setHours(h, m, 0, 0)
-  return x
+const IST_OFFSET_MINUTES = 330
+
+function shiftToIst(d) {
+  return new Date(new Date(d).getTime() + IST_OFFSET_MINUTES * 60 * 1000)
+}
+
+function istDateParts(d) {
+  const x = shiftToIst(d)
+  return {
+    year: x.getUTCFullYear(),
+    month: x.getUTCMonth(),
+    date: x.getUTCDate(),
+  }
+}
+
+function atIstOnDay(d, { h, m }) {
+  const { year, month, date } = istDateParts(d)
+  return new Date(
+    Date.UTC(year, month, date, h, m) - IST_OFFSET_MINUTES * 60 * 1000,
+  )
 }
 
 /** First instant when booking is no longer allowed for the meal. */
 export function bookingCutoff(mealKey, day = new Date()) {
   const meal = MEALS.find((m) => m.key === mealKey)
   if (!meal) return new Date(day)
-  const start = atToday(day, meal.start)
+  const start = atIstOnDay(day, meal.start)
   const cutoffMinutes = BOOKING_CUTOFF_MINUTES[mealKey] ?? 120
   return new Date(start.getTime() - cutoffMinutes * 60 * 1000)
 }
@@ -58,20 +74,20 @@ export function canCancelBooking(mealKey, now = new Date()) {
 export function mealWindowStart(mealKey, day = new Date()) {
   const meal = MEALS.find((m) => m.key === mealKey)
   if (!meal) return day
-  return atToday(day, meal.start)
+  return atIstOnDay(day, meal.start)
 }
 
 export function mealWindowEnd(mealKey, day = new Date()) {
   const meal = MEALS.find((m) => m.key === mealKey)
   if (!meal) return day
-  return atToday(day, meal.end)
+  return atIstOnDay(day, meal.end)
 }
 
 /** Meal currently in serving window, or null if none. */
 export function getActiveServingMeal(now = new Date()) {
   for (const m of MEALS) {
-    const a = atToday(now, m.start)
-    const b = atToday(now, m.end)
+    const a = atIstOnDay(now, m.start)
+    const b = atIstOnDay(now, m.end)
     if (now >= a && now <= b) return m.key
   }
   return null
@@ -86,8 +102,9 @@ export function formatRange(mealKey) {
 }
 
 export function toISODateLocal(d) {
-  const y = d.getFullYear()
-  const mo = String(d.getMonth() + 1).padStart(2, '0')
-  const da = String(d.getDate()).padStart(2, '0')
+  const x = shiftToIst(d)
+  const y = x.getUTCFullYear()
+  const mo = String(x.getUTCMonth() + 1).padStart(2, '0')
+  const da = String(x.getUTCDate()).padStart(2, '0')
   return `${y}-${mo}-${da}`
 }
