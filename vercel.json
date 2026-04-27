@@ -7,5 +7,11 @@
     "api/**/*.py": {
       "excludeFiles": "{api/**/__pycache__/**,backend/**/__pycache__/**,**/*.pyc,backend/.env,vercel/**}"
     }
-  }
+  },
+  "routes": [
+    { "src": "/api", "dest": "/api/index.py" },
+    { "src": "/api/(.*)", "dest": "/api/[[...path]].py" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
