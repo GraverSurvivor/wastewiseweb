@@ -4,13 +4,13 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "functions": {
-    "api/**/*.py": {
-      "excludeFiles": "{api/**/__pycache__/**,backend/**/__pycache__/**,**/*.pyc,backend/.env,vercel/**}"
+    "app.py": {
+      "excludeFiles": "{api/**,__pycache__/**,backend/**/__pycache__/**,**/*.pyc,backend/.env,vercel/**}"
     }
   },
   "routes": [
-    { "src": "/api", "dest": "/api/index.py" },
-    { "src": "/api/(.*)", "dest": "/api/[[...path]].py" },
+    { "src": "/api", "dest": "/app.py" },
+    { "src": "/api/(.*)", "dest": "/app.py" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
