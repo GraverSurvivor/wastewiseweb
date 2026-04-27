@@ -9,6 +9,7 @@ export function Login() {
     signOut,
     signUp,
     resetPassword,
+    session,
     supabase,
     supabaseConfigured,
     authError,
@@ -41,6 +42,34 @@ export function Login() {
       setAdminEmail(email.trim().toLowerCase())
     }
   }, [adminEmail, email, showAdminModal])
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('verified') === '1') {
+      setSuccessMsg('Email verified successfully. You can continue into your account now.')
+      setMode('signin')
+    }
+  }, [location.search])
+
+  useEffect(() => {
+    const hash = location.hash.startsWith('#')
+      ? location.hash.slice(1)
+      : location.hash
+    if (!hash) return
+
+    const params = new URLSearchParams(hash)
+    const errorDescription = params.get('error_description')
+    if (!errorDescription) return
+
+    setLocalError(decodeURIComponent(errorDescription.replace(/\+/g, ' ')))
+    setSuccessMsg(null)
+    setMode('signin')
+  }, [location.hash])
+
+  useEffect(() => {
+    if (!session || showAdminModal) return
+    navigate(from && from !== '/login' ? from : '/app', { replace: true })
+  }, [from, navigate, session, showAdminModal])
 
   const clearErrors = () => {
     setLocalError(null)

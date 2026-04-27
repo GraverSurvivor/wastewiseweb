@@ -128,7 +128,7 @@ const signUp = useCallback(
         data: meta,
         emailRedirectTo:
           typeof window !== 'undefined'
-            ? window.location.origin
+            ? `${window.location.origin}/login?verified=1`
             : undefined,
       },
     })
