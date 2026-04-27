@@ -331,7 +331,11 @@ export function StudentHome() {
               return (
                 <div
                   key={m.key}
-                  className={`rounded-2xl border p-4 shadow-sm transition ${tone}`}
+                  className={`rounded-2xl border p-4 shadow-sm transition-all duration-200 ${tone} ${
+                    confirmMeal === m.key || busy === m.key
+                      ? 'ring-2 ring-primary/20 shadow-md shadow-primary/10'
+                      : ''
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -351,11 +355,13 @@ export function StudentHome() {
                         type="button"
                         disabled={!canBook || busy === m.key}
                         onClick={() => setConfirmMeal(m.key)}
-                        className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                        className="interactive-button rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        {row?.status === 'cancelled'
-                          ? 'Book again'
-                          : 'Book'}
+                        {busy === m.key
+                          ? 'Booking...'
+                          : row?.status === 'cancelled'
+                            ? 'Book again'
+                            : 'Book meal'}
                       </button>
                     )}
                     {showCancel && (
@@ -363,9 +369,9 @@ export function StudentHome() {
                         type="button"
                         disabled={busy === m.key}
                         onClick={() => cancelMeal(m.key)}
-                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+                        className="interactive-button rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        Cancel
+                        {busy === m.key ? 'Cancelling...' : 'Cancel'}
                       </button>
                     )}
                   </div>
@@ -404,17 +410,18 @@ export function StudentHome() {
             <div className="mt-4 flex gap-2">
               <button
                 type="button"
-                className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-medium"
+                className="interactive-button flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-medium"
                 onClick={() => setConfirmMeal(null)}
               >
                 No
               </button>
               <button
                 type="button"
-                className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-semibold text-white"
+                disabled={busy === confirmMeal}
+                className="interactive-button flex-1 rounded-xl bg-primary py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={() => bookMeal(confirmMeal)}
               >
-                Yes, book
+                {busy === confirmMeal ? 'Booking...' : 'Yes, book meal'}
               </button>
             </div>
           </div>
