@@ -68,6 +68,14 @@ def can_cancel_booking(meal_key: str, when: Optional[datetime] = None) -> bool:
     return not is_booking_closed(meal_key, when)
 
 
+def meal_window_end_ist(meal_key: str, day: Optional[date] = None) -> datetime:
+    meal = next((x for x in MEALS if x.key == meal_key), None)
+    if not meal:
+        return now_ist()
+    d = day or now_ist().date()
+    return _at_on_day(d, meal.end_h, meal.end_m)
+
+
 def get_active_serving_meal(when: Optional[datetime] = None) -> Optional[str]:
     when = when or now_ist()
     d = when.date()

@@ -60,12 +60,30 @@ export function StudentHome() {
     return leaveRows.some((r) => todayInRange(today, r.from_date, r.to_date))
   }, [leaveRows, today])
 
+  const getAccessToken = useCallback(async () => {
+    const liveSession = supabase
+      ? (await supabase.auth.getSession()).data.session
+      : session
+    return liveSession?.access_token ?? session?.access_token ?? null
+  }, [session, supabase])
+
   const load = useCallback(async () => {
     if (!supabase || !student?.id) {
       setLoading(false)
       return
     }
     setLoading(true)
+    const accessToken = await getAccessToken()
+    if (accessToken) {
+      try {
+        await apiJson('/bookings/reconcile', {
+          method: 'POST',
+          token: accessToken,
+        })
+      } catch {
+        // Continue loading even if reconciliation is unavailable.
+      }
+    }
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
@@ -119,7 +137,7 @@ export function StudentHome() {
       noshow: nsRes.count ?? 0,
     })
     setLoading(false)
-  }, [supabase, student?.id, today])
+  }, [getAccessToken, supabase, student?.id, today])
 
   useEffect(() => {
     load()

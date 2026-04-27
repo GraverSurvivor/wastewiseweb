@@ -72,6 +72,18 @@ export function AdminDashboard() {
     }
 
     setLoading(true)
+    const accessToken = await getAccessToken()
+    if (accessToken) {
+      try {
+        await apiJson('/bookings/reconcile', {
+          method: 'POST',
+          token: accessToken,
+        })
+      } catch {
+        // Keep the dashboard usable even if reconciliation is temporarily unavailable.
+      }
+    }
+
     const now = new Date()
     const weekAgo = new Date(now)
     weekAgo.setDate(now.getDate() - 7)

@@ -15,7 +15,14 @@ from .helpers import (
     student_row_for_user,
     today_ist_iso,
 )
-from .meals import MEAL_KEYS, can_cancel_booking, is_booking_closed, now_ist
+from .meals import (
+    MEALS,
+    MEAL_KEYS,
+    can_cancel_booking,
+    is_booking_closed,
+    meal_window_end_ist,
+    now_ist,
+)
 
 router = APIRouter()
 
@@ -58,6 +65,50 @@ class ScannerStudentBody(BaseModel):
     roll_number: str
     meal_type: str
     date: str | None = None
+
+
+async def reconcile_expired_bookings(
+    access_token: str,
+    *,
+    student_id: str | None = None,
+) -> int:
+    now = now_ist()
+    today = now.date().isoformat()
+    updated_count = 0
+
+    base_filters = ["status=eq.booked"]
+    if student_id:
+        base_filters.append(f"student_id=eq.{student_id}")
+
+    def build_path(*extra_filters: str) -> str:
+        joined = "&".join([*base_filters, *extra_filters])
+        return f"bookings?{joined}"
+
+    updated = await sb.rest_patch(
+        build_path(f"date=lt.{today}"),
+        access_token,
+        {"status": "no_show"},
+    )
+    if isinstance(updated, list):
+        updated_count += len(updated)
+    elif updated:
+        updated_count += 1
+
+    for meal in MEALS:
+        if now < meal_window_end_ist(meal.key, now.date()):
+            continue
+
+        updated = await sb.rest_patch(
+            build_path(f"date=eq.{today}", f"meal_type=eq.{meal.key}"),
+            access_token,
+            {"status": "no_show"},
+        )
+        if isinstance(updated, list):
+            updated_count += len(updated)
+        elif updated:
+            updated_count += 1
+
+    return updated_count
 
 
 @router.post("/bookings/book")
@@ -109,6 +160,21 @@ async def book_meal(body: MealDateBody, authorization: str | None = Header(None)
     )
     record = inserted[0] if isinstance(inserted, list) else inserted
     return {"ok": True, "id": record.get("id") if isinstance(record, dict) else None}
+
+
+@router.post("/bookings/reconcile")
+async def reconcile_bookings(authorization: str | None = Header(None)):
+    token, uid = auth_context(authorization)
+    admin = await is_admin(token, uid)
+    student_id = None
+    if not admin:
+        student = await student_row_for_user(token, uid)
+        if not student:
+            raise HTTPException(400, "Student profile not found.")
+        student_id = student["id"]
+
+    updated = await reconcile_expired_bookings(token, student_id=student_id)
+    return {"ok": True, "updated": updated}
 
 
 @router.post("/bookings/cancel")
@@ -368,6 +434,8 @@ async def scanner_student(
     student = rows[0] if isinstance(rows, list) and rows else None
     if not student:
         return {"ok": True, "granted": False, "message": "Student not found."}
+
+    await reconcile_expired_bookings(token, student_id=student["id"])
 
     bookings = await sb.rest_get(
         "bookings?select=*"
