@@ -22,6 +22,7 @@ create table if not exists public.students (
 create table if not exists public.bookings (
   id uuid primary key default gen_random_uuid(),
   student_id uuid not null references public.students(id) on delete cascade,
+  roll_number text not null,
   meal_type text not null check (meal_type in ('breakfast', 'lunch', 'snacks', 'dinner')),
   date date not null,
   status text not null default 'booked' check (status in ('booked', 'cancelled', 'attended', 'no_show')),
@@ -33,6 +34,7 @@ create table if not exists public.bookings (
 create table if not exists public.complaints (
   id uuid primary key default gen_random_uuid(),
   student_id uuid not null references public.students(id) on delete cascade,
+  roll_number text not null,
   title text not null,
   description text not null,
   photo_url text,
@@ -70,8 +72,34 @@ create table if not exists public.leave_requests (
 -- Indexes
 create index if not exists idx_bookings_date on public.bookings(date);
 create index if not exists idx_bookings_student on public.bookings(student_id);
+create index if not exists idx_bookings_roll_number on public.bookings(roll_number);
 create index if not exists idx_waste_log_date on public.waste_log(date);
 create index if not exists idx_announcements_expires_at on public.announcements(expires_at);
+create index if not exists idx_complaints_roll_number on public.complaints(roll_number);
+
+alter table public.bookings
+  add column if not exists roll_number text;
+
+alter table public.complaints
+  add column if not exists roll_number text;
+
+update public.bookings b
+set roll_number = s.roll_number
+from public.students s
+where b.student_id = s.id
+  and (b.roll_number is null or b.roll_number = '');
+
+update public.complaints c
+set roll_number = s.roll_number
+from public.students s
+where c.student_id = s.id
+  and (c.roll_number is null or c.roll_number = '');
+
+alter table public.bookings
+  alter column roll_number set not null;
+
+alter table public.complaints
+  alter column roll_number set not null;
 
 alter table public.announcements
   add column if not exists duration_days integer not null default 1;

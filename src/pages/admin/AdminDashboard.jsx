@@ -153,7 +153,8 @@ export function AdminDashboard() {
   const mealStats = useMemo(() => {
     const base = MEALS.map((meal) => ({
       meal: meal.label,
-      booked: 0,
+      totalBooked: 0,
+      pending: 0,
       attended: 0,
       noshow: 0,
     }))
@@ -162,7 +163,8 @@ export function AdminDashboard() {
     bookingsToday.forEach((booking) => {
       const idx = indexByMeal[booking.meal_type]
       if (idx === undefined) return
-      if (booking.status === 'booked') base[idx].booked += 1
+      if (booking.status !== 'cancelled') base[idx].totalBooked += 1
+      if (booking.status === 'booked') base[idx].pending += 1
       if (booking.status === 'attended') base[idx].attended += 1
       if (booking.status === 'no_show') base[idx].noshow += 1
     })
@@ -172,7 +174,8 @@ export function AdminDashboard() {
 
   const barData = mealStats.map((meal) => ({
     name: meal.meal,
-    Booked: meal.booked,
+    'Total booked': meal.totalBooked,
+    Pending: meal.pending,
     Attended: meal.attended,
     'No-show': meal.noshow,
   }))
@@ -325,12 +328,16 @@ export function AdminDashboard() {
             <h2 className="text-sm font-semibold text-slate-800">
               Live headcount (today)
             </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Total booked includes students who are still pending, already attended, or later marked no-show.
+            </p>
             <div className="mt-3 overflow-x-auto">
               <table className="w-full min-w-[480px] text-left text-xs">
                 <thead>
                   <tr className="border-b text-slate-500">
                     <th className="py-2 pr-2">Meal</th>
-                    <th className="py-2">Booked</th>
+                    <th className="py-2">Total booked</th>
+                    <th className="py-2">Pending</th>
                     <th className="py-2">Attended</th>
                     <th className="py-2">No-shows</th>
                   </tr>
@@ -341,7 +348,8 @@ export function AdminDashboard() {
                       <td className="py-2 pr-2 font-medium text-slate-800">
                         {meal.meal}
                       </td>
-                      <td className="py-2 text-primary">{meal.booked}</td>
+                      <td className="py-2 font-semibold text-admin">{meal.totalBooked}</td>
+                      <td className="py-2 text-primary">{meal.pending}</td>
                       <td className="py-2 text-emerald-700">{meal.attended}</td>
                       <td className="py-2 text-rose-600">{meal.noshow}</td>
                     </tr>
@@ -372,7 +380,8 @@ export function AdminDashboard() {
                   />
                   <Tooltip />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="Booked" fill="#1a7a52" />
+                  <Bar dataKey="Total booked" fill="#14532d" />
+                  <Bar dataKey="Pending" fill="#1a7a52" />
                   <Bar dataKey="Attended" fill="#059669" />
                   <Bar dataKey="No-show" fill="#e11d48" />
                 </BarChart>
@@ -578,7 +587,8 @@ export function AdminDashboard() {
                   </div>
                   <p className="text-slate-600">{complaint.description}</p>
                   <p className="text-[10px] text-slate-400">
-                    {complaint.students?.name} - {complaint.students?.roll_number}
+                    {complaint.students?.name || 'Student'} -{' '}
+                    {complaint.roll_number || complaint.students?.roll_number || 'Unknown roll number'}
                   </p>
                 </li>
               ))}

@@ -86,7 +86,14 @@ async def book_meal(body: MealDateBody, authorization: str | None = Header(None)
         raise HTTPException(400, "Meal already attended.")
 
     if row and row.get("id"):
-        await sb.rest_patch(f"bookings?id=eq.{row['id']}", token, {"status": "booked"})
+        await sb.rest_patch(
+            f"bookings?id=eq.{row['id']}",
+            token,
+            {
+                "status": "booked",
+                "roll_number": student["roll_number"],
+            },
+        )
         return {"ok": True, "id": row["id"]}
 
     inserted = await sb.rest_post(
@@ -94,6 +101,7 @@ async def book_meal(body: MealDateBody, authorization: str | None = Header(None)
         token,
         {
             "student_id": student["id"],
+            "roll_number": student["roll_number"],
             "meal_type": body.meal_type,
             "date": day,
             "status": "booked",
@@ -186,6 +194,7 @@ async def create_complaint(
         token,
         {
             "student_id": student["id"],
+            "roll_number": student["roll_number"],
             "title": title.strip(),
             "description": (description or "-").strip(),
             "photo_url": photo_url,
@@ -208,12 +217,13 @@ async def upsert_profile(body: ProfileBody, authorization: str | None = Header(N
         token,
     )
     previous = existing[0] if isinstance(existing, list) and existing else None
+    normalized_roll_number = body.roll_number.strip()
 
     payload = {
         "user_id": uid,
         "email": email,
         "name": body.name.strip(),
-        "roll_number": body.roll_number.strip(),
+        "roll_number": normalized_roll_number,
         "face_registered": previous.get("face_registered") if previous else False,
     }
 
@@ -228,6 +238,14 @@ async def upsert_profile(body: ProfileBody, authorization: str | None = Header(N
             "students",
             token,
             payload,
+        )
+
+    if previous and previous.get("id"):
+        student_id = previous["id"]
+        await sb.rest_patch(
+            f"bookings?student_id=eq.{student_id}",
+            token,
+            {"roll_number": normalized_roll_number},
         )
 
     return {"ok": True}
