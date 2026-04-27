@@ -25,11 +25,11 @@ export const MEALS = [
   },
 ]
 
-const BOOKING_CUTOFF_HOURS = {
-  breakfast: 2,
-  lunch: 2,
-  snacks: 2,
-  dinner: 1,
+const BOOKING_CUTOFF_MINUTES = {
+  breakfast: 120,
+  lunch: 120,
+  snacks: 120,
+  dinner: 15,
 }
 
 function atToday(d, { h, m }) {
@@ -43,8 +43,8 @@ export function bookingCutoff(mealKey, day = new Date()) {
   const meal = MEALS.find((m) => m.key === mealKey)
   if (!meal) return new Date(day)
   const start = atToday(day, meal.start)
-  const cutoffHours = BOOKING_CUTOFF_HOURS[mealKey] ?? 2
-  return new Date(start.getTime() - cutoffHours * 60 * 60 * 1000)
+  const cutoffMinutes = BOOKING_CUTOFF_MINUTES[mealKey] ?? 120
+  return new Date(start.getTime() - cutoffMinutes * 60 * 1000)
 }
 
 export function isBookingClosed(mealKey, now = new Date()) {

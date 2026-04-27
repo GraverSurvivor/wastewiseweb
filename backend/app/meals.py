@@ -27,11 +27,11 @@ MEALS: tuple[MealDef, ...] = (
     MealDef("dinner", 19, 30, 21, 30),
 )
 
-BOOKING_CUTOFF_HOURS = {
-    "breakfast": 2,
-    "lunch": 2,
-    "snacks": 2,
-    "dinner": 1,
+BOOKING_CUTOFF_MINUTES = {
+    "breakfast": 120,
+    "lunch": 120,
+    "snacks": 120,
+    "dinner": 15,
 }
 
 
@@ -54,8 +54,8 @@ def booking_cutoff_utc_for_display(meal_key: str, day: Optional[date] = None) ->
         return now_ist()
     d = day or now_ist().date()
     start = _at_on_day(d, meal.start_h, meal.start_m)
-    cutoff_hours = BOOKING_CUTOFF_HOURS.get(meal_key, 2)
-    return start - timedelta(hours=cutoff_hours)
+    cutoff_minutes = BOOKING_CUTOFF_MINUTES.get(meal_key, 120)
+    return start - timedelta(minutes=cutoff_minutes)
 
 
 def is_booking_closed(meal_key: str, when: Optional[datetime] = None) -> bool:
