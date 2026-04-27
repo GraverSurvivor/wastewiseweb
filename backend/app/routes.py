@@ -342,8 +342,9 @@ async def scanner_student(
     if body.meal_type not in MEAL_KEYS:
         raise HTTPException(400, "Invalid meal_type.")
 
+    roll_number = body.roll_number.strip().upper()
     rows = await sb.rest_get(
-        f"students?select=id,name,roll_number&roll_number=eq.{body.roll_number.strip()}",
+        f"students?select=id,name,roll_number&roll_number=ilike.{roll_number}",
         token,
     )
     student = rows[0] if isinstance(rows, list) and rows else None

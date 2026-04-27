@@ -42,6 +42,7 @@ export async function apiJson(path, { method = 'GET', token, body } = {}) {
     throw error
   }
   const text = await res.text()
+  const contentType = res.headers.get('content-type') || ''
   let data = null
   if (text) {
     try {
@@ -49,6 +50,11 @@ export async function apiJson(path, { method = 'GET', token, body } = {}) {
     } catch {
       data = text
     }
+  }
+  if (res.ok && typeof data === 'string' && contentType.includes('text/html')) {
+    throw new Error(
+      'The backend API is not deployed correctly right now. It returned the website HTML instead of JSON.',
+    )
   }
   if (!res.ok) {
     const msg =

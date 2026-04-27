@@ -9,7 +9,7 @@ import {
 } from '../utils/meals'
 
 export function Scanner() {
-  const { session, isAdmin } = useAuth()
+  const { session, isAdmin, supabase } = useAuth()
   const [roll, setRoll] = useState('')
   const [mealOverride, setMealOverride] = useState('')
   const [result, setResult] = useState(null)
@@ -30,7 +30,7 @@ export function Scanner() {
     e.preventDefault()
     setResult(null)
 
-    if (!session?.access_token || !roll.trim() || !effectiveMeal) {
+    if (!roll.trim() || !effectiveMeal) {
       setResult({
         ok: false,
         msg: !effectiveMeal
@@ -42,11 +42,24 @@ export function Scanner() {
 
     setBusy(true)
     try {
+      const liveSession = supabase
+        ? (await supabase.auth.getSession()).data.session
+        : session
+      const accessToken = liveSession?.access_token ?? session?.access_token
+
+      if (!accessToken) {
+        setResult({
+          ok: false,
+          msg: 'Your admin session expired. Sign in again and retry the scan.',
+        })
+        return
+      }
+
       const data = await apiJson('/scanner/student', {
         method: 'POST',
-        token: session.access_token,
+        token: accessToken,
         body: {
-          roll_number: roll.trim(),
+          roll_number: roll.trim().toUpperCase(),
           meal_type: effectiveMeal,
           date: today,
         },

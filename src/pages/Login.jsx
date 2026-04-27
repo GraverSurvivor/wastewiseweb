@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth, isRvceEmail } from '../context/AuthContext'
 import { apiJson } from '../lib/api'
@@ -36,6 +36,7 @@ export function Login() {
   const [adminPassword, setAdminPassword] = useState('')
   const [adminError, setAdminError] = useState(null)
   const [adminPending, setAdminPending] = useState(false)
+  const adminRedirectRef = useRef(false)
 
   useEffect(() => {
     if (showAdminModal && !adminEmail && email) {
@@ -67,7 +68,7 @@ export function Login() {
   }, [location.hash])
 
   useEffect(() => {
-    if (!session || showAdminModal) return
+    if (!session || showAdminModal || adminRedirectRef.current) return
     navigate(from && from !== '/login' ? from : '/app', { replace: true })
   }, [from, navigate, session, showAdminModal])
 
@@ -167,7 +168,7 @@ export function Login() {
         return
       }
 
-      closeAdminModal()
+      adminRedirectRef.current = true
       navigate('/admin', { replace: true })
     } finally {
       setAdminPending(false)

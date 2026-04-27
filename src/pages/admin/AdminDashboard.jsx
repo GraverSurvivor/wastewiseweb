@@ -58,6 +58,12 @@ export function AdminDashboard() {
   const [monthStats, setMonthStats] = useState({ attended: 0, noshow: 0 })
 
   const today = useMemo(() => toISODateLocal(new Date()), [])
+  const getAccessToken = useCallback(async () => {
+    const liveSession = supabase
+      ? (await supabase.auth.getSession()).data.session
+      : session
+    return liveSession?.access_token ?? session?.access_token ?? null
+  }, [session, supabase])
 
   const load = useCallback(async () => {
     if (!supabase || !user?.id) {
@@ -172,7 +178,7 @@ export function AdminDashboard() {
   }))
 
   const pushAnnouncement = async () => {
-    if (!session?.access_token || !user || !announcement.trim()) return
+    if (!user || !announcement.trim()) return
 
     const duration = Number(announcementDays)
     if (!Number.isInteger(duration) || duration < 1 || duration > 365) {
@@ -182,9 +188,14 @@ export function AdminDashboard() {
 
     setPushingAnnouncement(true)
     try {
+      const accessToken = await getAccessToken()
+      if (!accessToken) {
+        window.alert('Your admin session expired. Sign in again to continue.')
+        return
+      }
       await apiJson('/admin/announcements', {
         method: 'POST',
-        token: session.access_token,
+        token: accessToken,
         body: {
           message: announcement.trim(),
           duration_days: duration,
@@ -201,7 +212,7 @@ export function AdminDashboard() {
   }
 
   const deleteAnnouncement = async (announcementId) => {
-    if (!session?.access_token || !announcementId) return
+    if (!announcementId) return
 
     const confirmed = window.confirm(
       'Delete this announcement now? It will be removed from the student app immediately.',
@@ -210,9 +221,14 @@ export function AdminDashboard() {
 
     setDeletingAnnouncementId(announcementId)
     try {
+      const accessToken = await getAccessToken()
+      if (!accessToken) {
+        window.alert('Your admin session expired. Sign in again to continue.')
+        return
+      }
       await apiJson(`/admin/announcements/${announcementId}`, {
         method: 'DELETE',
-        token: session.access_token,
+        token: accessToken,
       })
       setAnnouncementHistory((current) =>
         current.filter((item) => item.id !== announcementId),
@@ -226,7 +242,7 @@ export function AdminDashboard() {
 
   const saveWaste = async (e) => {
     e.preventDefault()
-    if (!session?.access_token || !user) return
+    if (!user) return
 
     const entries = []
     for (const meal of MEALS) {
@@ -248,9 +264,17 @@ export function AdminDashboard() {
     setSavingWaste(true)
     setWasteMessage(null)
     try {
+      const accessToken = await getAccessToken()
+      if (!accessToken) {
+        setWasteMessage({
+          type: 'error',
+          text: 'Your admin session expired. Sign in again to continue.',
+        })
+        return
+      }
       await apiJson('/admin/waste-log', {
         method: 'POST',
-        token: session.access_token,
+        token: accessToken,
         body: { date: today, entries },
       })
       await load()
@@ -269,12 +293,15 @@ export function AdminDashboard() {
   }
 
   const setComplaintStatus = async (id, status) => {
-    if (!session?.access_token) return
-
     try {
+      const accessToken = await getAccessToken()
+      if (!accessToken) {
+        window.alert('Your admin session expired. Sign in again to continue.')
+        return
+      }
       await apiJson(`/admin/complaints/${id}/status`, {
         method: 'PATCH',
-        token: session.access_token,
+        token: accessToken,
         body: { status },
       })
       await load()

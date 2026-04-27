@@ -32,8 +32,8 @@ function RequireAuth({ children }) {
 }
 
 function RequireAdmin({ children }) {
-  const { isAdmin, loading } = useAuth()
-  if (loading) {
+  const { isAdmin, loading, session, profile } = useAuth()
+  if (loading || (session && !profile)) {
     return (
       <div className="mx-auto max-w-[390px] space-y-3 p-4">
         <Skeleton className="h-12 w-full rounded-2xl" />
