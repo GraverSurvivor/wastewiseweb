@@ -9,7 +9,7 @@ import {
 } from '../utils/meals'
 
 export function Scanner() {
-  const { session, isAdmin, supabase } = useAuth()
+  const { isAdmin, getAccessToken } = useAuth()
   const [roll, setRoll] = useState('')
   const [mealOverride, setMealOverride] = useState('')
   const [result, setResult] = useState(null)
@@ -42,11 +42,7 @@ export function Scanner() {
 
     setBusy(true)
     try {
-      const liveSession = supabase
-        ? (await supabase.auth.getSession()).data.session
-        : session
-      const accessToken = liveSession?.access_token ?? session?.access_token
-
+      const accessToken = await getAccessToken()
       if (!accessToken) {
         setResult({
           ok: false,

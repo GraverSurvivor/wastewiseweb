@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { apiJson } from '../../lib/api'
 
 export function ProfilePage() {
-  const { user, student, session, signOut, refreshStudent } = useAuth()
+  const { user, student, signOut, refreshStudent, getAccessToken } = useAuth()
   const [name, setName] = useState(student?.name ?? '')
   const [roll, setRoll] = useState(student?.roll_number ?? '')
   const [from, setFrom] = useState('')
@@ -19,13 +19,18 @@ export function ProfilePage() {
 
   const saveProfile = async (e) => {
     e.preventDefault()
-    if (!user || !session?.access_token) return
+    if (!user) return
     setBusy(true)
     setMsg(null)
     try {
+      const accessToken = await getAccessToken()
+      if (!accessToken) {
+        setMsg({ type: 'err', text: 'Your session expired. Sign in again to continue.' })
+        return
+      }
       await apiJson('/student/profile', {
         method: 'POST',
-        token: session.access_token,
+        token: accessToken,
         body: { name: name.trim(), roll_number: roll.trim() },
       })
       await refreshStudent()
@@ -42,7 +47,7 @@ export function ProfilePage() {
 
   const submitLeave = async (e) => {
     e.preventDefault()
-    if (!student || !session?.access_token || !from || !to) return
+    if (!student || !from || !to) return
     if (from > to) {
       setMsg({ type: 'err', text: 'From date must be before To date.' })
       return
@@ -50,9 +55,14 @@ export function ProfilePage() {
     setBusy(true)
     setMsg(null)
     try {
+      const accessToken = await getAccessToken()
+      if (!accessToken) {
+        setMsg({ type: 'err', text: 'Your session expired. Sign in again to continue.' })
+        return
+      }
       await apiJson('/leave', {
         method: 'POST',
-        token: session.access_token,
+        token: accessToken,
         body: { from_date: from, to_date: to },
       })
       setMsg({

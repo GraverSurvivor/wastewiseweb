@@ -22,7 +22,7 @@ const formatTicketTime = (value) => {
 }
 
 export function ComplaintsPage() {
-  const { student, supabase, session } = useAuth()
+  const { student, supabase, getAccessToken } = useAuth()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [title, setTitle] = useState('')
@@ -54,17 +54,22 @@ export function ComplaintsPage() {
 
   const submit = async (e) => {
     e.preventDefault()
-    if (!session?.access_token || !student || !title.trim()) return
+    if (!student || !title.trim()) return
 
     setBusy(true)
     try {
+      const accessToken = await getAccessToken()
+      if (!accessToken) {
+        window.alert('Your session expired. Sign in again and try submitting the complaint.')
+        return
+      }
       const fd = new FormData()
       fd.append('title', title.trim())
       fd.append('description', description.trim() || '-')
       if (file) fd.append('photo', file)
 
       await apiForm('/complaints', {
-        token: session.access_token,
+        token: accessToken,
         formData: fd,
       })
 

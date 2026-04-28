@@ -42,7 +42,7 @@ function announcementStatus(announcement) {
 }
 
 export function AdminDashboard() {
-  const { user, supabase, session } = useAuth()
+  const { user, supabase, getAccessToken } = useAuth()
   const [loading, setLoading] = useState(true)
   const [bookingsToday, setBookingsToday] = useState([])
   const [complaints, setComplaints] = useState([])
@@ -58,13 +58,6 @@ export function AdminDashboard() {
   const [monthStats, setMonthStats] = useState({ attended: 0, noshow: 0 })
 
   const today = useMemo(() => toISODateLocal(new Date()), [])
-  const getAccessToken = useCallback(async () => {
-    const liveSession = supabase
-      ? (await supabase.auth.getSession()).data.session
-      : session
-    return liveSession?.access_token ?? session?.access_token ?? null
-  }, [session, supabase])
-
   const load = useCallback(async () => {
     if (!supabase || !user?.id) {
       setLoading(false)

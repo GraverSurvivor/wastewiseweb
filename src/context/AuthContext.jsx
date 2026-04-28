@@ -164,6 +164,33 @@ const resetPassword = useCallback(async (email) => {
     if (supabase) await supabase.auth.signOut()
   }, [])
 
+  const getAccessToken = useCallback(async () => {
+    if (!supabase) return session?.access_token ?? null
+
+    let currentSession = session ?? null
+    if (!currentSession) {
+      const { data } = await supabase.auth.getSession()
+      currentSession = data.session ?? null
+    }
+
+    const nowSeconds = Math.floor(Date.now() / 1000)
+    const expiresAt = currentSession?.expires_at ?? 0
+    const shouldRefresh =
+      !currentSession?.access_token ||
+      (expiresAt > 0 && expiresAt <= nowSeconds + 60)
+
+    if (shouldRefresh) {
+      const { data, error } = await supabase.auth.refreshSession()
+      if (!error && data.session) {
+        currentSession = data.session
+        setSession(data.session)
+        if (data.session.user) await loadProfileAndStudent(data.session.user)
+      }
+    }
+
+    return currentSession?.access_token ?? null
+  }, [loadProfileAndStudent, session, supabase])
+
   const refreshStudent = useCallback(async () => {
     if (session?.user) await loadProfileAndStudent(session.user)
   }, [session?.user, loadProfileAndStudent])
@@ -183,6 +210,7 @@ const resetPassword = useCallback(async (email) => {
       signIn,
       signUp,
       signOut,
+      getAccessToken,
       resetPassword,
       refreshStudent,
       supabaseConfigured,
@@ -198,6 +226,7 @@ const resetPassword = useCallback(async (email) => {
       signIn,
       signUp,
       signOut,
+      getAccessToken,
       resetPassword,
       refreshStudent,
     ],

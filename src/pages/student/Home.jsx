@@ -39,7 +39,7 @@ function readDismissedAnnouncements() {
 }
 
 export function StudentHome() {
-  const { student, supabase, session } = useAuth()
+  const { student, supabase, getAccessToken } = useAuth()
   const [bookings, setBookings] = useState([])
   const [leaveRows, setLeaveRows] = useState([])
   const [announcements, setAnnouncements] = useState([])
@@ -59,13 +59,6 @@ export function StudentHome() {
   const onLeaveToday = useMemo(() => {
     return leaveRows.some((r) => todayInRange(today, r.from_date, r.to_date))
   }, [leaveRows, today])
-
-  const getAccessToken = useCallback(async () => {
-    const liveSession = supabase
-      ? (await supabase.auth.getSession()).data.session
-      : session
-    return liveSession?.access_token ?? session?.access_token ?? null
-  }, [session, supabase])
 
   const load = useCallback(async () => {
     if (!supabase || !student?.id) {
