@@ -219,13 +219,18 @@ export function StudentHome() {
   }, [announcements, dismissedAnnouncements])
 
   const bookMeal = async (mealKey) => {
-    if (!session?.access_token || !student || onLeaveToday || isBookingClosed(mealKey))
+    if (!student || onLeaveToday || isBookingClosed(mealKey))
       return
     setBusy(mealKey)
     try {
+      const accessToken = await getAccessToken()
+      if (!accessToken) {
+        window.alert('Your session expired. Sign in again and try booking the meal.')
+        return
+      }
       await apiJson('/bookings/book', {
         method: 'POST',
-        token: session.access_token,
+        token: accessToken,
         body: { meal_type: mealKey, date: today },
       })
       await load()
@@ -238,14 +243,19 @@ export function StudentHome() {
   }
 
   const cancelMeal = async (mealKey) => {
-    if (!session?.access_token || !canCancelBooking(mealKey)) return
+    if (!canCancelBooking(mealKey)) return
     const row = bookingByMeal[mealKey]
     if (!row?.id) return
     setBusy(mealKey)
     try {
+      const accessToken = await getAccessToken()
+      if (!accessToken) {
+        window.alert('Your session expired. Sign in again and try cancelling the meal.')
+        return
+      }
       await apiJson('/bookings/cancel', {
         method: 'POST',
-        token: session.access_token,
+        token: accessToken,
         body: { meal_type: mealKey, date: today },
       })
       await load()
