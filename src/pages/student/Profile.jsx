@@ -83,82 +83,85 @@ export function ProfilePage() {
 
   return (
     <div className="page-enter space-y-4 pb-4">
-      <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-        <h1 className="text-lg font-bold text-slate-900">Profile</h1>
-        <p className="text-xs text-slate-500">{user?.email}</p>
+      <div className="hero-surface px-5 py-5">
+        <div className="relative z-10">
+          <p className="section-kicker text-white/72">Identity and settings</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">
+            Profile
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-white/80">{user?.email}</p>
+        </div>
       </div>
 
       {msg && (
         <div
-          className={`rounded-xl px-3 py-2 text-sm ${
+          className={`rounded-[24px] border px-4 py-3 text-sm shadow-sm ${
             msg.type === 'ok'
-              ? 'bg-emerald-50 text-emerald-900'
-              : 'bg-red-50 text-red-800'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+              : 'border-red-200 bg-red-50 text-red-800'
           }`}
         >
           {msg.text}
         </div>
       )}
 
-      <form
-        onSubmit={saveProfile}
-        className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm space-y-3"
-      >
-        <h2 className="text-sm font-semibold">Student details</h2>
-        <label className="block text-xs font-medium text-slate-600">
+      <form onSubmit={saveProfile} className="glass-surface space-y-4 p-5">
+        <div>
+          <p className="section-kicker">Student identity</p>
+          <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900">
+            Personal details
+          </h2>
+        </div>
+        <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
           Name
           <input
             required
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="form-input"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </label>
-        <label className="block text-xs font-medium text-slate-600">
+        <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
           Roll number
           <input
             required
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="form-input"
             value={roll}
             onChange={(e) => setRoll(e.target.value)}
           />
         </label>
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-        >
+        <button type="submit" disabled={busy} className="primary-button w-full">
           Save profile
         </button>
       </form>
 
-      <form
-        onSubmit={submitLeave}
-        className="rounded-2xl border border-violet-100 bg-violet-50/50 p-4 shadow-sm space-y-3"
-      >
-        <h2 className="text-sm font-semibold text-violet-900">
-          Skip meals / vacation
-        </h2>
-        <p className="text-xs text-violet-800/90">
-          Meals in this date range are auto-cancelled and show as on leave.
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <label className="text-xs font-medium text-slate-600">
+      <form onSubmit={submitLeave} className="glass-surface space-y-4 p-5">
+        <div>
+          <p className="section-kicker">Time away</p>
+          <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900">
+            Skip meals or mark vacation
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Meals in this range are auto-cancelled and will show as leave for the selected dates.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
             From
             <input
               type="date"
               required
-              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-2 py-2 text-sm"
+              className="form-input"
               value={from}
               onChange={(e) => setFrom(e.target.value)}
             />
           </label>
-          <label className="text-xs font-medium text-slate-600">
+          <label className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
             To
             <input
               type="date"
               required
-              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-2 py-2 text-sm"
+              className="form-input"
               value={to}
               onChange={(e) => setTo(e.target.value)}
             />
@@ -167,23 +170,26 @@ export function ProfilePage() {
         <button
           type="submit"
           disabled={busy || !student}
-          className="w-full rounded-xl bg-violet-700 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+          className="secondary-button w-full border-violet-200 bg-violet-50 text-violet-900"
         >
           Mark leave
         </button>
       </form>
 
-      <Link
-        to="/app/complaints"
-        className="block rounded-2xl border border-slate-100 bg-white p-4 text-sm font-semibold text-primary shadow-sm"
-      >
-        Complaints →
+      <Link to="/app/complaints" className="glass-surface block p-5">
+        <p className="section-kicker">Support</p>
+        <p className="mt-1 text-xl font-bold tracking-tight text-slate-900">
+          Complaints desk
+        </p>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          Report food quality, hygiene, or mess issues and track the ticket status.
+        </p>
       </Link>
 
       <button
         type="button"
         onClick={() => signOut()}
-        className="w-full rounded-xl border border-slate-200 py-3 text-sm font-medium text-slate-700"
+        className="secondary-button w-full"
       >
         Sign out
       </button>

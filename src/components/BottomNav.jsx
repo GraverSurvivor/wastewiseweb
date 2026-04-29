@@ -16,24 +16,24 @@ const links = [
 export function BottomNav() {
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200/80 bg-white/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
+      className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-[calc(env(safe-area-inset-bottom)+0.35rem)]"
       aria-label="Main"
     >
-      <div className="mx-auto flex max-w-lg items-stretch justify-around px-1 pt-1">
+      <div className="floating-nav">
         {links.map(({ to, end, label, Icon }) => (
           <NavLink
             key={to}
             to={to}
             end={end}
             className={({ isActive }) =>
-              `flex min-w-[4rem] flex-col items-center gap-0.5 rounded-xl px-2 py-2 text-[10px] font-medium transition-colors ${
+              `interactive-button flex min-w-[4.35rem] flex-1 flex-col items-center gap-1 rounded-[20px] px-2 py-2.5 text-[10px] font-semibold tracking-[0.08em] uppercase transition-all ${
                 isActive
-                  ? 'text-primary'
-                  : 'text-slate-500 hover:text-slate-700'
+                  ? 'bg-primary text-white shadow-[0_18px_36px_-24px_rgba(26,122,82,0.9)]'
+                  : 'text-slate-500 hover:bg-slate-100/80 hover:text-slate-800'
               }`
             }
           >
-            <Icon className="h-6 w-6" strokeWidth={1.75} />
+            <Icon className="h-[22px] w-[22px]" strokeWidth={1.85} />
             <span>{label}</span>
           </NavLink>
         ))}

@@ -3,8 +3,8 @@ import { BottomNav } from './BottomNav'
 
 export function StudentLayout() {
   return (
-    <div className="min-h-[100dvh] pb-24">
-      <div className="page-enter mx-auto max-w-[390px] px-3 pt-3 sm:max-w-2xl">
+    <div className="app-shell">
+      <div className="content-shell">
         <Outlet />
       </div>
       <BottomNav />

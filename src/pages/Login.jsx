@@ -37,6 +37,11 @@ export function Login() {
   const [adminError, setAdminError] = useState(null)
   const [adminPending, setAdminPending] = useState(false)
   const adminRedirectRef = useRef(false)
+  const highlights = [
+    { value: '1 tap', label: 'Meal booking' },
+    { value: 'Live', label: 'Waste tracking' },
+    { value: 'Smart', label: 'Campus alerts' },
+  ]
 
   useEffect(() => {
     if (showAdminModal && !adminEmail && email) {
@@ -240,46 +245,58 @@ export function Login() {
 
   if (showForgot) {
     return (
-      <div className="page-enter min-h-[100dvh] bg-gradient-to-b from-primary/15 via-white to-slate-50 px-4 py-10">
-        <div className="mx-auto w-full max-w-[390px] space-y-6">
-          <div className="text-center">
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-2xl font-bold text-white shadow-lg shadow-primary/25">
-              W
+      <div className="app-shell page-enter px-4 py-8">
+        <div className="relative z-10 mx-auto w-full max-w-[440px] space-y-5">
+          <div className="hero-surface px-5 py-6">
+            <div className="relative z-10">
+              <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/18 text-2xl font-bold text-white shadow-lg shadow-slate-950/10">
+                W
+              </div>
+              <p className="section-kicker text-white/72">Account recovery</p>
+              <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">
+                Reset your password
+              </h1>
+              <p className="mt-2 max-w-sm text-sm leading-6 text-white/78">
+                We will send a secure reset link to your RVCE email so you can get back into the app quickly.
+              </p>
             </div>
-            <h1 className="text-2xl font-bold text-slate-900">Reset password</h1>
-            <p className="mt-1 text-sm text-slate-600">
-              Enter your college email to receive a reset link
-            </p>
           </div>
+
           <form
             onSubmit={handleForgotPassword}
-            className="space-y-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-lg"
+            className="glass-surface space-y-4 p-5"
           >
-            <label className="block text-xs font-medium text-slate-600">
+            <div>
+              <p className="section-kicker">Recovery email</p>
+              <p className="mt-1 text-sm text-slate-600">
+                Enter the same campus email you use for booking meals.
+              </p>
+            </div>
+            <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
               College email
               <input
                 type="email"
                 required
-                className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none ring-primary/30 focus:ring-2"
+                className="form-input"
                 value={forgotEmail}
                 onChange={(e) => setForgotEmail(e.target.value)}
                 placeholder="you.name@rvce.edu.in"
               />
             </label>
             {displayError && (
-              <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
                 {displayError}
               </p>
             )}
             {successMsg && (
-              <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+              <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
                 {successMsg}
               </p>
             )}
             <button
               type="submit"
               disabled={pending}
-              className="interactive-button w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white shadow-md disabled:opacity-60"
+              className="primary-button w-full"
             >
               {pending ? 'Sending...' : 'Send reset link'}
             </button>
@@ -289,7 +306,7 @@ export function Login() {
                 setShowForgot(false)
                 clearErrors()
               }}
-              className="interactive-button w-full rounded-xl border border-slate-200 py-2.5 text-sm text-slate-600"
+              className="secondary-button w-full"
             >
               Back to sign in
             </button>
@@ -301,179 +318,248 @@ export function Login() {
 
   return (
     <>
-      <div className="page-enter min-h-[100dvh] bg-gradient-to-b from-primary/15 via-white to-slate-50 px-4 py-10">
-        <div className="mx-auto w-full max-w-[390px] space-y-6">
-          <div className="text-center">
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-2xl font-bold text-white shadow-lg shadow-primary/25">
-              W
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900">WasteWiseWeb</h1>
-            <p className="mt-1 text-sm text-slate-600">
-              RVCE Mess - book meals, cut waste
-            </p>
-          </div>
-
-          {!supabaseConfigured && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-              Configure Supabase env vars to enable sign-in.
-            </div>
-          )}
-
-          {successMsg && (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-              {successMsg}
-            </div>
-          )}
-
-          <div className="flex rounded-2xl bg-slate-100/90 p-1">
-            <button
-              type="button"
-              onClick={() => {
-                setMode('signin')
-                clearErrors()
-              }}
-              className={`interactive-button flex-1 rounded-xl py-2.5 text-sm font-semibold ${
-                mode === 'signin'
-                  ? 'bg-white text-primary shadow-sm'
-                  : 'text-slate-600'
-              }`}
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode('register')
-                clearErrors()
-              }}
-              className={`interactive-button flex-1 rounded-xl py-2.5 text-sm font-semibold ${
-                mode === 'register'
-                  ? 'bg-white text-primary shadow-sm'
-                  : 'text-slate-600'
-              }`}
-            >
-              Register
-            </button>
-          </div>
-
-          <form
-            onSubmit={submit}
-            className="space-y-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-lg shadow-slate-200/50"
-          >
-            {mode === 'register' && (
-              <>
-                <label className="block text-xs font-medium text-slate-600">
-                  Full name
-                  <input
-                    required
-                    className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none ring-primary/30 focus:ring-2"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Arjun Sharma"
-                  />
-                </label>
-                <label className="block text-xs font-medium text-slate-600">
-                  Roll number
-                  <input
-                    required
-                    className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none ring-primary/30 focus:ring-2"
-                    value={roll}
-                    onChange={(e) => setRoll(e.target.value)}
-                    placeholder="1RV22CS001"
-                  />
-                </label>
-              </>
-            )}
-            <label className="block text-xs font-medium text-slate-600">
-              College email
-              <input
-                type="email"
-                required
-                autoComplete="email"
-                className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none ring-primary/30 focus:ring-2"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you.name@rvce.edu.in"
-              />
-            </label>
-            <label className="block text-xs font-medium text-slate-600">
-              Password
-              <input
-                type="password"
-                required
-                autoComplete={
-                  mode === 'signin' ? 'current-password' : 'new-password'
-                }
-                className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none ring-primary/30 focus:ring-2"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="........"
-              />
-            </label>
-
-            {mode === 'signin' && (
-              <div className="text-right">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForgot(true)
-                    clearErrors()
-                  }}
-                  className="interactive-button text-xs text-primary underline"
-                >
-                  Forgot password?
-                </button>
+      <div className="app-shell page-enter px-4 py-8">
+        <div className="relative z-10 mx-auto w-full max-w-[1080px]">
+          <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
+            <section className="space-y-5">
+              <div className="hero-surface px-5 py-6 sm:px-7 sm:py-7">
+                <div className="relative z-10">
+                  <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-[22px] bg-white/18 text-3xl font-bold text-white shadow-lg shadow-slate-950/10">
+                    W
+                  </div>
+                  <p className="section-kicker text-white/72">RVCE Mess Experience</p>
+                  <h1 className="mt-2 max-w-xl text-4xl font-bold tracking-tight text-white sm:text-[2.8rem]">
+                    WasteWiseWeb
+                  </h1>
+                  <p className="mt-3 max-w-xl text-base leading-7 text-white/80">
+                    A cleaner, smarter mess platform for booking meals, reducing waste, and keeping students and wardens on the same page.
+                  </p>
+                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                    {highlights.map((item) => (
+                      <div
+                        key={item.label}
+                        className="rounded-2xl border border-white/15 bg-white/12 px-4 py-3 backdrop-blur"
+                      >
+                        <p className="text-xl font-bold text-white">{item.value}</p>
+                        <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-white/65">
+                          {item.label}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            )}
 
-            {displayError && (
-              <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
-                {displayError}
-              </p>
-            )}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="metric-card">
+                  <p className="section-kicker">Why it stands out</p>
+                  <h2 className="mt-2 text-lg font-bold text-slate-900">
+                    Designed around campus flow
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Students can act in seconds, while admins still get the control room visibility they need.
+                  </p>
+                </div>
+                <div className="metric-card">
+                  <p className="section-kicker">Built for action</p>
+                  <h2 className="mt-2 text-lg font-bold text-slate-900">
+                    Booking, complaints, waste insights
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    One product experience ties together meal operations, accountability, and sustainability.
+                  </p>
+                </div>
+              </div>
+            </section>
 
-            <button
-              type="submit"
-              disabled={pending}
-              className="interactive-button w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white shadow-md shadow-primary/25 hover:bg-primary-dark disabled:opacity-60"
-            >
-              {pending
-                ? 'Please wait...'
-                : mode === 'signin'
-                  ? 'Sign in'
-                  : 'Create account'}
-            </button>
-          </form>
+            <section className="space-y-4 lg:pt-2">
+              {!supabaseConfigured && (
+                <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm">
+                  Configure Supabase env vars to enable sign-in.
+                </div>
+              )}
 
-          <div className="space-y-3">
-            <button
-              type="button"
-              onClick={openAdminModal}
-              className="interactive-button w-full rounded-2xl border-2 border-admin bg-admin px-4 py-3 text-sm font-semibold text-white shadow-md hover:bg-admin-dark"
-            >
-              Continue as Admin / Warden
-            </button>
-            <p className="text-center text-xs text-slate-500">
-              Admin accounts are controlled in Supabase by setting{' '}
-              <code className="rounded bg-slate-100 px-1">profiles.role</code> to{' '}
-              <code className="rounded bg-slate-100 px-1">admin</code>.
-            </p>
+              {successMsg && (
+                <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 shadow-sm">
+                  {successMsg}
+                </div>
+              )}
+
+              <div className="glass-surface p-5 sm:p-6">
+                <div className="flex rounded-[22px] border border-slate-200/70 bg-slate-100/85 p-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('signin')
+                      clearErrors()
+                    }}
+                    className={`interactive-button flex-1 rounded-2xl py-3 text-sm font-semibold ${
+                      mode === 'signin'
+                        ? 'bg-white text-primary shadow-[0_12px_30px_-24px_rgba(15,23,42,0.35)]'
+                        : 'text-slate-600'
+                    }`}
+                  >
+                    Sign in
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('register')
+                      clearErrors()
+                    }}
+                    className={`interactive-button flex-1 rounded-2xl py-3 text-sm font-semibold ${
+                      mode === 'register'
+                        ? 'bg-white text-primary shadow-[0_12px_30px_-24px_rgba(15,23,42,0.35)]'
+                        : 'text-slate-600'
+                    }`}
+                  >
+                    Register
+                  </button>
+                </div>
+
+                <form onSubmit={submit} className="mt-5 space-y-4">
+                  <div>
+                    <p className="section-kicker">
+                      {mode === 'signin' ? 'Welcome back' : 'Create your account'}
+                    </p>
+                    <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
+                      {mode === 'signin'
+                        ? 'Access your meal dashboard'
+                        : 'Join the smart mess experience'}
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Use your official RVCE email to keep bookings, complaints, and attendance linked to the right profile.
+                    </p>
+                  </div>
+
+                  {mode === 'register' && (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        Full name
+                        <input
+                          required
+                          className="form-input"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="Arjun Sharma"
+                        />
+                      </label>
+                      <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        Roll number
+                        <input
+                          required
+                          className="form-input"
+                          value={roll}
+                          onChange={(e) => setRoll(e.target.value)}
+                          placeholder="1RV22CS001"
+                        />
+                      </label>
+                    </div>
+                  )}
+
+                  <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    College email
+                    <input
+                      type="email"
+                      required
+                      autoComplete="email"
+                      className="form-input"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you.name@rvce.edu.in"
+                    />
+                  </label>
+
+                  <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Password
+                    <input
+                      type="password"
+                      required
+                      autoComplete={
+                        mode === 'signin' ? 'current-password' : 'new-password'
+                      }
+                      className="form-input"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="........"
+                    />
+                  </label>
+
+                  {mode === 'signin' && (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowForgot(true)
+                          clearErrors()
+                        }}
+                        className="interactive-button text-xs font-semibold uppercase tracking-[0.16em] text-primary"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                  )}
+
+                  {displayError && (
+                    <p className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+                      {displayError}
+                    </p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={pending}
+                    className="primary-button w-full"
+                  >
+                    {pending
+                      ? 'Please wait...'
+                      : mode === 'signin'
+                        ? 'Sign in'
+                        : 'Create account'}
+                  </button>
+                </form>
+              </div>
+
+              <div className="glass-surface p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="section-kicker">Restricted access</p>
+                    <h3 className="mt-1 text-xl font-bold text-slate-900">
+                      Continue as Admin / Warden
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Admin access stays separate from the student flow and only works for accounts marked as admin in Supabase.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openAdminModal}
+                    className="admin-button min-w-[220px]"
+                  >
+                    Open admin mode
+                  </button>
+                </div>
+                <p className="mt-3 text-xs text-slate-500">
+                  Admin accounts are controlled in Supabase by setting{' '}
+                  <code className="rounded bg-slate-100 px-1">profiles.role</code> to{' '}
+                  <code className="rounded bg-slate-100 px-1">admin</code>.
+                </p>
+              </div>
+            </section>
           </div>
         </div>
       </div>
 
       {showAdminModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">
-          <div className="page-enter w-full max-w-md rounded-[28px] border border-slate-200 bg-white p-5 shadow-2xl shadow-slate-900/25">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/52 px-4 backdrop-blur-md">
+          <div className="page-enter w-full max-w-md rounded-[30px] border border-white/70 bg-white/92 p-6 shadow-[0_32px_90px_-34px_rgba(15,23,42,0.45)]">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-admin">
-                  Admin mode
-                </p>
-                <h2 className="mt-1 text-xl font-bold text-slate-900">
+                <p className="section-kicker text-admin">Admin mode</p>
+                <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
                   Enter admin details
                 </h2>
-                <p className="mt-2 text-sm text-slate-600">
+                <p className="mt-2 text-sm leading-6 text-slate-600">
                   Sign in with an account that already has{' '}
                   <code className="rounded bg-slate-100 px-1">profiles.role = admin</code>{' '}
                   in Supabase.
@@ -482,34 +568,34 @@ export function Login() {
               <button
                 type="button"
                 onClick={closeAdminModal}
-                className="interactive-button rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-500"
+                className="secondary-button px-3 py-2 text-xs"
                 aria-label="Close admin sign in"
               >
                 Close
               </button>
             </div>
 
-            <form onSubmit={handleAdminSignIn} className="mt-5 space-y-3">
-              <label className="block text-xs font-medium text-slate-600">
+            <form onSubmit={handleAdminSignIn} className="mt-6 space-y-4">
+              <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                 Admin email
                 <input
                   type="email"
                   required
                   autoComplete="email"
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none ring-admin/30 focus:ring-2"
+                  className="form-input focus:ring-admin/20"
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
                   placeholder="warden@rvce.edu.in"
                 />
               </label>
 
-              <label className="block text-xs font-medium text-slate-600">
+              <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                 Password
                 <input
                   type="password"
                   required
                   autoComplete="current-password"
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none ring-admin/30 focus:ring-2"
+                  className="form-input focus:ring-admin/20"
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
                   placeholder="........"
@@ -517,7 +603,7 @@ export function Login() {
               </label>
 
               {adminError && (
-                <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+                <p className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
                   {adminError}
                 </p>
               )}
@@ -525,7 +611,7 @@ export function Login() {
               <button
                 type="submit"
                 disabled={adminPending}
-                className="interactive-button w-full rounded-xl bg-admin py-3 text-sm font-semibold text-white shadow-md shadow-admin/25 hover:bg-admin-dark disabled:opacity-60"
+                className="admin-button w-full"
               >
                 {adminPending ? 'Checking admin access...' : 'Enter admin dashboard'}
               </button>
@@ -533,7 +619,7 @@ export function Login() {
               <button
                 type="button"
                 onClick={closeAdminModal}
-                className="interactive-button w-full rounded-xl border border-slate-200 py-2.5 text-sm font-medium text-slate-700"
+                className="secondary-button w-full"
               >
                 Cancel
               </button>

@@ -27,6 +27,7 @@ export function SustainabilityPage() {
       setLoading(false)
       return
     }
+
     const now = new Date()
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
@@ -54,27 +55,20 @@ export function SustainabilityPage() {
         .select('waste_kg, date, meal_type')
         .gte('date', iso.m0)
         .lte('date', iso.m1),
-      supabase
-        .from('waste_log')
-        .select('waste_kg')
-        .gte('date', iso.p0)
-        .lte('date', iso.p1),
-      supabase
-        .from('waste_log')
-        .select('waste_kg, date')
-        .gte('date', iso.w0)
-        .lte('date', iso.w1),
+      supabase.from('waste_log').select('waste_kg').gte('date', iso.p0).lte('date', iso.p1),
+      supabase.from('waste_log').select('waste_kg, date').gte('date', iso.w0).lte('date', iso.w1),
     ])
 
     setMonthRows(cur.data ?? [])
     setLastMonthRows(prev.data ?? [])
 
     const daily = {}
-    ;(week.data ?? []).forEach((r) => {
-      daily[r.date] = (daily[r.date] ?? 0) + Number(r.waste_kg)
+    ;(week.data ?? []).forEach((row) => {
+      daily[row.date] = (daily[row.date] ?? 0) + Number(row.waste_kg)
     })
+
     const bars = []
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 7; i += 1) {
       const dt = new Date(weekStart)
       dt.setDate(weekStart.getDate() + i)
       const key = toISODateLocal(dt)
@@ -93,129 +87,100 @@ export function SustainabilityPage() {
   }, [load])
 
   const totals = useMemo(() => {
-    const thisMonth = monthRows.reduce(
-      (s, r) => s + Number(r.waste_kg || 0),
-      0,
-    )
-    const last = lastMonthRows.reduce(
-      (s, r) => s + Number(r.waste_kg || 0),
-      0,
-    )
-    const reduction =
-      last > 0 ? Math.round(((last - thisMonth) / last) * 1000) / 10 : 0
+    const thisMonth = monthRows.reduce((sum, row) => sum + Number(row.waste_kg || 0), 0)
+    const last = lastMonthRows.reduce((sum, row) => sum + Number(row.waste_kg || 0), 0)
+    const reduction = last > 0 ? Math.round(((last - thisMonth) / last) * 1000) / 10 : 0
     return {
       wasteKg: Math.round(thisMonth * 10) / 10,
       biogas: Math.round(thisMonth * BIOGAS_PER_KG * 10) / 10,
       slurry: Math.round(thisMonth * SLURRY_PER_KG * 10) / 10,
       reduction,
     }
-  }, [monthRows, lastMonthRows])
+  }, [lastMonthRows, monthRows])
 
   return (
     <div className="page-enter space-y-4 pb-4">
-      <div className="rounded-2xl bg-gradient-to-br from-primary to-primary-dark px-4 py-4 text-white shadow-lg">
-        <h1 className="text-lg font-bold">Sustainability</h1>
-        <p className="text-sm text-white/85">Waste → biogas → campus farms</p>
+      <div className="hero-surface px-5 py-5">
+        <div className="relative z-10">
+          <p className="section-kicker text-white/72">Sustainability loop</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">
+            Waste to energy
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-white/80">
+            See how the mess waste stream turns into measurable campus impact through biogas and agricultural reuse.
+          </p>
+        </div>
       </div>
 
       {loading ? (
-      <div className="space-y-3">
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-48 w-full" />
-      </div>
+        <div className="space-y-3">
+          <Skeleton className="h-28 w-full rounded-[28px]" />
+          <Skeleton className="h-56 w-full rounded-[28px]" />
+        </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <div className="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
-              <p className="text-[10px] font-semibold uppercase text-slate-400">
-                Waste (kg)
-              </p>
-              <p className="text-xl font-bold text-primary">{totals.wasteKg}</p>
-              <p className="text-[10px] text-slate-500">This month</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="metric-card">
+              <p className="section-kicker">Waste</p>
+              <p className="mt-2 text-2xl font-bold text-primary">{totals.wasteKg}</p>
+              <p className="mt-1 text-xs text-slate-500">kg this month</p>
             </div>
-            <div className="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
-              <p className="text-[10px] font-semibold uppercase text-slate-400">
-                Biogas (m³)
-              </p>
-              <p className="text-xl font-bold text-emerald-700">
-                {totals.biogas}
-              </p>
-              <p className="text-[10px] text-slate-500">1 kg → 0.3 m³</p>
+            <div className="metric-card">
+              <p className="section-kicker">Biogas</p>
+              <p className="mt-2 text-2xl font-bold text-emerald-700">{totals.biogas}</p>
+              <p className="mt-1 text-xs text-slate-500">m3 generated</p>
             </div>
-            <div className="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
-              <p className="text-[10px] font-semibold uppercase text-slate-400">
-                Slurry (kg)
-              </p>
-              <p className="text-xl font-bold text-amber-800">{totals.slurry}</p>
-              <p className="text-[10px] text-slate-500">1 kg → 0.6 kg</p>
+            <div className="metric-card">
+              <p className="section-kicker">Slurry</p>
+              <p className="mt-2 text-2xl font-bold text-amber-800">{totals.slurry}</p>
+              <p className="mt-1 text-xs text-slate-500">kg equivalent</p>
             </div>
-            <div className="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
-              <p className="text-[10px] font-semibold uppercase text-slate-400">
-                vs last month
-              </p>
-              <p className="text-xl font-bold text-admin">
-                {totals.reduction}%
-              </p>
-              <p className="text-[10px] text-slate-500">Waste reduction</p>
+            <div className="metric-card">
+              <p className="section-kicker">Vs last month</p>
+              <p className="mt-2 text-2xl font-bold text-admin">{totals.reduction}%</p>
+              <p className="mt-1 text-xs text-slate-500">waste reduction</p>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-800">
-              Daily waste (this week)
-            </h2>
-            <div className="mt-2 h-52 w-full">
+          <div className="glass-surface p-4">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="section-kicker">Weekly chart</p>
+                <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900">
+                  Daily waste this week
+                </h2>
+              </div>
+            </div>
+            <div className="mt-4 h-60 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={weekByDay} margin={{ left: 0, right: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#dbe4ef" />
                   <XAxis dataKey="label" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} width={28} />
                   <Tooltip />
-                  <Bar dataKey="kg" fill="#1a7a52" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="kg" fill="#1a7a52" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-800">
-              Campus pipeline
+          <div className="glass-surface p-4">
+            <p className="section-kicker">Impact pipeline</p>
+            <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900">
+              How waste returns to campus value
             </h2>
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-center text-[10px] text-slate-600">
-              <div className="flex flex-1 min-w-[72px] flex-col items-center gap-1">
-                <div className="h-10 w-10 rounded-full bg-amber-100 text-lg leading-10">
-                  🍛
+            <div className="mt-4 grid gap-3 sm:grid-cols-4">
+              {[
+                ['Food waste', 'Kitchen leftovers move into the recovery stream.'],
+                ['Biogas plant', 'Organic waste is processed for useful fuel.'],
+                ['Energy and slurry', 'Gas powers utility use while slurry supports soil.'],
+                ['Campus agriculture', 'Recovered output supports green operations.'],
+              ].map(([title, desc]) => (
+                <div key={title} className="metric-card">
+                  <p className="text-sm font-bold text-slate-900">{title}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{desc}</p>
                 </div>
-                <span className="font-semibold">Food waste</span>
-              </div>
-              <span className="text-primary">→</span>
-              <div className="flex flex-1 min-w-[72px] flex-col items-center gap-1">
-                <div className="h-10 w-10 rounded-full bg-emerald-100 text-lg leading-10">
-                  ⚗️
-                </div>
-                <span className="font-semibold">Biogas plant</span>
-              </div>
-              <span className="text-primary">→</span>
-              <div className="flex flex-1 min-w-[72px] flex-col items-center gap-1">
-                <div className="h-10 w-10 rounded-full bg-lime-100 text-lg leading-10">
-                  🔥
-                </div>
-                <span className="font-semibold">Biogas</span>
-              </div>
-              <span className="text-primary">+</span>
-              <div className="flex flex-1 min-w-[72px] flex-col items-center gap-1">
-                <div className="h-10 w-10 rounded-full bg-stone-100 text-lg leading-10">
-                  🌱
-                </div>
-                <span className="font-semibold">Slurry</span>
-              </div>
-              <span className="text-primary">→</span>
-              <div className="flex flex-1 min-w-[72px] flex-col items-center gap-1">
-                <div className="h-10 w-10 rounded-full bg-green-100 text-lg leading-10">
-                  🚜
-                </div>
-                <span className="font-semibold">Agriculture</span>
-              </div>
+              ))}
             </div>
           </div>
         </>

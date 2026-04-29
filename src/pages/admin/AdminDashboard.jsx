@@ -320,20 +320,26 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl bg-admin px-4 py-3 text-white shadow-md">
-        <h1 className="text-lg font-bold">Mess control room</h1>
-        <p className="text-sm text-white/85">{today}</p>
+      <div className="admin-hero-surface px-5 py-5">
+        <div className="relative z-10">
+          <p className="section-kicker text-white/70">Operations center</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">
+            Mess control room
+          </h1>
+          <p className="mt-2 text-sm text-white/80">{today}</p>
+        </div>
       </div>
 
       {loading ? (
-        <Skeleton className="h-40 w-full rounded-2xl" />
+        <Skeleton className="h-40 w-full rounded-[28px]" />
       ) : (
         <>
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-800">
+          <section className="glass-surface p-4">
+            <p className="section-kicker">Today</p>
+            <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900">
               Live headcount (today)
             </h2>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-2 text-sm text-slate-500">
               Total booked includes students who are still pending, already attended, or later marked no-show.
             </p>
             <div className="mt-3 overflow-x-auto">
@@ -364,8 +370,9 @@ export function AdminDashboard() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-            <h2 className="px-1 text-sm font-semibold text-slate-800">
+          <section className="glass-surface p-4">
+            <p className="section-kicker">Visual split</p>
+            <h2 className="mt-1 px-1 text-xl font-bold tracking-tight text-slate-900">
               Bookings by meal (today)
             </h2>
             <div className="h-56 w-full pt-2">
@@ -395,8 +402,9 @@ export function AdminDashboard() {
           </section>
 
           <section className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <h2 className="text-sm font-semibold">Week summary</h2>
+            <div className="metric-card">
+              <p className="section-kicker">Weekly pulse</p>
+              <h2 className="mt-1 text-lg font-bold tracking-tight text-slate-900">Week summary</h2>
               <p className="mt-2 text-2xl font-bold text-primary">
                 {weekStats.attended}
                 <span className="text-sm font-normal text-slate-500">
@@ -408,8 +416,9 @@ export function AdminDashboard() {
                 {weekStats.noshow} no-shows
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <h2 className="text-sm font-semibold">Month summary</h2>
+            <div className="metric-card">
+              <p className="section-kicker">Monthly pulse</p>
+              <h2 className="mt-1 text-lg font-bold tracking-tight text-slate-900">Month summary</h2>
               <p className="mt-2 text-2xl font-bold text-admin">
                 {monthStats.attended}
                 <span className="text-sm font-normal text-slate-500">
@@ -423,21 +432,24 @@ export function AdminDashboard() {
             </div>
           </section>
 
-          <section className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-semibold">Broadcast</h2>
+          <section className="glass-surface space-y-3 p-4">
+            <div>
+              <p className="section-kicker">Communication</p>
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900">Broadcast</h2>
+            </div>
             <textarea
-              className="min-h-[72px] w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              className="form-textarea min-h-[92px]"
               placeholder="Announcement to all students (banner on home)"
               value={announcement}
               onChange={(e) => setAnnouncement(e.target.value)}
             />
-            <label className="block text-xs font-medium text-slate-600">
+            <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
               Show this announcement for how many days?
               <input
                 type="number"
                 min="1"
                 max="365"
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                className="form-input"
                 value={announcementDays}
                 onChange={(e) => setAnnouncementDays(e.target.value)}
               />
@@ -446,12 +458,12 @@ export function AdminDashboard() {
               type="button"
               onClick={pushAnnouncement}
               disabled={pushingAnnouncement || !announcement.trim()}
-              className="interactive-button rounded-xl bg-admin px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="admin-button"
             >
               {pushingAnnouncement ? 'Pushing...' : 'Push announcement'}
             </button>
 
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+            <div className="rounded-[24px] border border-slate-100 bg-slate-50/90 p-3">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold text-slate-800">
                   Your previous announcements
@@ -473,10 +485,7 @@ export function AdminDashboard() {
                   const active = isAnnouncementActive(item)
 
                   return (
-                    <li
-                      key={item.id}
-                      className="rounded-xl bg-white px-3 py-3 shadow-sm"
-                    >
+                    <li key={item.id} className="rounded-2xl bg-white px-3 py-3 shadow-sm">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <span
@@ -496,7 +505,7 @@ export function AdminDashboard() {
                           type="button"
                           onClick={() => deleteAnnouncement(item.id)}
                           disabled={deletingAnnouncementId === item.id}
-                          className="interactive-button rounded-lg border border-rose-200 px-3 py-1 text-[11px] font-semibold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="secondary-button px-3 py-1.5 text-[11px] text-rose-600"
                         >
                           {deletingAnnouncementId === item.id
                             ? 'Deleting...'
@@ -516,9 +525,10 @@ export function AdminDashboard() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-semibold">Daily waste log (kg)</h2>
-            <p className="mt-1 text-xs text-slate-500">
+          <section className="glass-surface p-4">
+            <p className="section-kicker">Waste management</p>
+            <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900">Daily waste log (kg)</h2>
+            <p className="mt-2 text-sm text-slate-500">
               Saved values for today stay visible here, so you can confirm or update them.
             </p>
             {wasteMessage && (
@@ -532,18 +542,18 @@ export function AdminDashboard() {
                 {wasteMessage.text}
               </div>
             )}
-            <form onSubmit={saveWaste} className="mt-2 grid gap-2 sm:grid-cols-2">
+            <form onSubmit={saveWaste} className="mt-3 grid gap-3 sm:grid-cols-2">
               {MEALS.map((meal) => (
                 <label
                   key={meal.key}
-                  className="text-xs font-medium text-slate-600"
+                  className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500"
                 >
                   {meal.label}
                   <input
                     type="number"
                     step="0.01"
                     min="0"
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-2 py-2 text-sm"
+                    className="form-input"
                     placeholder="kg"
                     value={wasteForm[meal.key]}
                     onChange={(e) => {
@@ -559,20 +569,21 @@ export function AdminDashboard() {
               <button
                 type="submit"
                 disabled={savingWaste}
-                className="sm:col-span-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="primary-button sm:col-span-2"
               >
                 {savingWaste ? 'Saving...' : 'Save waste entries'}
               </button>
             </form>
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-semibold">Complaints</h2>
+          <section className="glass-surface p-4">
+            <p className="section-kicker">Student support</p>
+            <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900">Complaints</h2>
             <ul className="mt-2 space-y-3 text-sm">
               {complaints.map((complaint) => (
                 <li
                   key={complaint.id}
-                  className="rounded-xl border border-slate-100 bg-slate-50/80 p-3"
+                  className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold text-slate-900">

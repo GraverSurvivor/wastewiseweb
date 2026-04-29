@@ -2,22 +2,22 @@ export function AnnouncementBanner({ message, meta, onDismiss }) {
   if (!message) return null
 
   return (
-    <div className="mb-3 flex items-start gap-2 rounded-2xl border border-amber-200/80 bg-amber-50 px-3 py-2.5 text-sm text-amber-950 shadow-sm">
+    <div className="glass-surface mb-3 flex items-start gap-3 px-4 py-3 text-sm text-amber-950">
       <span
-        className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-900"
+        className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-amber-200 bg-[linear-gradient(135deg,#fff5c4,#ffe18a)] text-sm font-bold text-amber-900 shadow-sm"
         aria-hidden
       >
         !
       </span>
       <div className="flex-1">
-        <p className="leading-snug">{message}</p>
-        {meta && <p className="mt-1 text-xs text-amber-800/80">{meta}</p>}
+        <p className="font-medium leading-snug text-slate-900">{message}</p>
+        {meta && <p className="mt-1 text-xs text-slate-500">{meta}</p>}
       </div>
       {onDismiss && (
         <button
           type="button"
           onClick={onDismiss}
-          className="interactive-button shrink-0 rounded-lg px-2 py-0.5 text-amber-800/80 hover:bg-amber-100"
+          className="secondary-button shrink-0 px-3 py-2 text-xs"
         >
           Dismiss
         </button>

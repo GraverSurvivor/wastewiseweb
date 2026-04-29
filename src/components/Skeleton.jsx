@@ -1,7 +1,7 @@
 export function Skeleton({ className = '', rounded = 'rounded-xl' }) {
   return (
     <div
-      className={`animate-pulse bg-slate-200/80 ${rounded} ${className}`}
+      className={`animate-pulse bg-[linear-gradient(110deg,rgba(226,232,240,0.95),rgba(241,245,249,0.98),rgba(226,232,240,0.95))] ${rounded} ${className}`}
       aria-hidden
     />
   )
@@ -9,7 +9,7 @@ export function Skeleton({ className = '', rounded = 'rounded-xl' }) {
 
 export function CardSkeleton() {
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm space-y-3">
+    <div className="glass-surface space-y-3 p-4">
       <Skeleton className="h-4 w-1/3" />
       <Skeleton className="h-16 w-full" rounded="rounded-lg" />
     </div>
