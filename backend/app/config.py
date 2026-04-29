@@ -15,9 +15,9 @@ def get_settings():
         "CORS_ORIGINS",
         "http://localhost:5173,http://127.0.0.1:5173",
     )
-    if not url or not anon or not jwt_secret:
+    if not url or not anon:
         raise RuntimeError(
-            "Set SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_JWT_SECRET in backend/.env",
+            "Set SUPABASE_URL and SUPABASE_ANON_KEY in backend/.env",
         )
     origins = [o.strip() for o in cors.split(",") if o.strip()]
     return type(

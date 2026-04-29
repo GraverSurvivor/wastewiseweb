@@ -7,7 +7,7 @@ from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 from . import supabase_rest as sb
-from .auth_deps import auth_context, email_from_token
+from .auth_deps import auth_context
 from .helpers import (
     is_admin,
     iso_today_for_request,
@@ -113,7 +113,7 @@ async def reconcile_expired_bookings(
 
 @router.post("/bookings/book")
 async def book_meal(body: MealDateBody, authorization: str | None = Header(None)):
-    token, uid = auth_context(authorization)
+    token, uid, _ = await auth_context(authorization)
     if body.meal_type not in MEAL_KEYS:
         raise HTTPException(400, "Invalid meal_type")
 
@@ -164,7 +164,7 @@ async def book_meal(body: MealDateBody, authorization: str | None = Header(None)
 
 @router.post("/bookings/reconcile")
 async def reconcile_bookings(authorization: str | None = Header(None)):
-    token, uid = auth_context(authorization)
+    token, uid, _ = await auth_context(authorization)
     admin = await is_admin(token, uid)
     student_id = None
     if not admin:
@@ -179,7 +179,7 @@ async def reconcile_bookings(authorization: str | None = Header(None)):
 
 @router.post("/bookings/cancel")
 async def cancel_meal(body: MealDateBody, authorization: str | None = Header(None)):
-    token, uid = auth_context(authorization)
+    token, uid, _ = await auth_context(authorization)
     if body.meal_type not in MEAL_KEYS:
         raise HTTPException(400, "Invalid meal_type")
     if not can_cancel_booking(body.meal_type, now_ist()):
@@ -209,7 +209,7 @@ async def cancel_meal(body: MealDateBody, authorization: str | None = Header(Non
 
 @router.post("/leave")
 async def apply_leave(body: LeaveBody, authorization: str | None = Header(None)):
-    token, uid = auth_context(authorization)
+    token, uid, _ = await auth_context(authorization)
     if body.from_date > body.to_date:
         raise HTTPException(400, "from_date must be on or before to_date.")
 
@@ -242,7 +242,7 @@ async def create_complaint(
     description: str = Form(""),
     photo: UploadFile | None = File(None),
 ):
-    token, uid = auth_context(authorization)
+    token, uid, _ = await auth_context(authorization)
     student = await student_row_for_user(token, uid)
     if not student:
         raise HTTPException(400, "Student profile not found.")
@@ -273,8 +273,8 @@ async def create_complaint(
 
 @router.post("/student/profile")
 async def upsert_profile(body: ProfileBody, authorization: str | None = Header(None)):
-    token, uid = auth_context(authorization)
-    email = email_from_token(token)
+    token, uid, auth_user = await auth_context(authorization)
+    email = (auth_user.get("email") or "").strip().lower()
     if not email:
         raise HTTPException(400, "Missing email on account; sign in again.")
 
@@ -322,7 +322,7 @@ async def post_announcement(
     body: AnnouncementBody,
     authorization: str | None = Header(None),
 ):
-    token, uid = auth_context(authorization)
+    token, uid, _ = await auth_context(authorization)
     if not await is_admin(token, uid):
         raise HTTPException(403, "Admin only.")
 
@@ -346,7 +346,7 @@ async def delete_announcement(
     announcement_id: str,
     authorization: str | None = Header(None),
 ):
-    token, uid = auth_context(authorization)
+    token, uid, _ = await auth_context(authorization)
     if not await is_admin(token, uid):
         raise HTTPException(403, "Admin only.")
 
@@ -369,7 +369,7 @@ async def post_waste_log(
     body: WasteLogBody,
     authorization: str | None = Header(None),
 ):
-    token, uid = auth_context(authorization)
+    token, uid, _ = await auth_context(authorization)
     if not await is_admin(token, uid):
         raise HTTPException(403, "Admin only.")
 
@@ -399,7 +399,7 @@ async def patch_complaint_status(
     body: ComplaintStatusBody,
     authorization: str | None = Header(None),
 ):
-    token, uid = auth_context(authorization)
+    token, uid, _ = await auth_context(authorization)
     if not await is_admin(token, uid):
         raise HTTPException(403, "Admin only.")
     if body.status not in ("open", "acknowledged", "resolved"):
@@ -418,7 +418,7 @@ async def scanner_student(
     body: ScannerStudentBody,
     authorization: str | None = Header(None),
 ):
-    token, uid = auth_context(authorization)
+    token, uid, _ = await auth_context(authorization)
     if not await is_admin(token, uid):
         raise HTTPException(403, "Admin only.")
 
