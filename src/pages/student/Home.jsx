@@ -504,8 +504,8 @@ export function StudentHome() {
       </p>
 
       {confirmMeal && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-3 backdrop-blur-sm sm:items-center">
-          <div className="glass-surface w-full max-w-[420px] p-5">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-md">
+          <div className="glass-surface w-full max-w-[420px] p-5 shadow-[0_34px_90px_-36px_rgba(15,23,42,0.58)]">
             <p className="section-kicker">Confirm action</p>
             <p className="mt-1 text-xl font-bold text-slate-900">Confirm booking</p>
             <p className="mt-2 text-sm leading-6 text-slate-600">
