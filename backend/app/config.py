@@ -1,6 +1,5 @@
 import os
 from functools import lru_cache
-
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,6 +10,7 @@ def get_settings():
     url = os.environ.get("SUPABASE_URL", "").rstrip("/")
     anon = os.environ.get("SUPABASE_ANON_KEY", "")
     jwt_secret = os.environ.get("SUPABASE_JWT_SECRET", "")
+    service_key = os.environ.get("SUPABASE_SERVICE_KEY", "")
     cors = os.environ.get(
         "CORS_ORIGINS",
         "http://localhost:5173,http://127.0.0.1:5173",
@@ -27,6 +27,7 @@ def get_settings():
             "supabase_url": url,
             "supabase_anon_key": anon,
             "supabase_jwt_secret": jwt_secret,
+            "supabase_service_key": service_key,
             "origin_list": origins,
         },
     )()

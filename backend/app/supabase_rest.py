@@ -1,4 +1,5 @@
-"""Call Supabase PostgREST with the end-user JWT so RLS stays enforced."""
+"""Call Supabase PostgREST with the end-user JWT so RLS stays enforced.
+   Pass use_service=True for scanner endpoints that bypass RLS."""
 from __future__ import annotations
 
 import json
@@ -9,11 +10,24 @@ import httpx
 from .config import get_settings
 
 
-def _headers(access_token: str, extra: Optional[dict[str, str]] = None) -> dict[str, str]:
+def _headers(
+    access_token: str | None,
+    extra: Optional[dict[str, str]] = None,
+    use_service: bool = False
+) -> dict[str, str]:
     s = get_settings()
+    
+    # Use service role key for scanner (bypasses RLS)
+    if use_service and s.supabase_service_key:
+        key = s.supabase_service_key
+        token = s.supabase_service_key
+    else:
+        key = s.supabase_anon_key
+        token = access_token or ""
+    
     h = {
-        "apikey": s.supabase_anon_key,
-        "Authorization": f"Bearer {access_token}",
+        "apikey": key,
+        "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
     }
     if extra:
@@ -21,11 +35,18 @@ def _headers(access_token: str, extra: Optional[dict[str, str]] = None) -> dict[
     return h
 
 
-async def rest_get(path: str, access_token: str) -> Any:
+async def rest_get(
+    path: str,
+    access_token: str | None,
+    use_service: bool = False
+) -> Any:
     s = get_settings()
     url = f"{s.supabase_url}/rest/v1/{path}"
     async with httpx.AsyncClient(timeout=30) as client:
-        r = await client.get(url, headers=_headers(access_token))
+        r = await client.get(
+            url,
+            headers=_headers(access_token, use_service=use_service)
+        )
     if r.status_code >= 400:
         raise RuntimeError(r.text or r.reason_phrase)
     if not r.content:
@@ -35,11 +56,12 @@ async def rest_get(path: str, access_token: str) -> Any:
 
 async def rest_post(
     path: str,
-    access_token: str,
+    access_token: str | None,
     body: Any,
     *,
     merge: bool = False,
     prefer: str | None = None,
+    use_service: bool = False,
 ) -> Any:
     s = get_settings()
     url = f"{s.supabase_url}/rest/v1/{path}"
@@ -49,7 +71,11 @@ async def rest_post(
             if merge
             else "return=representation"
         )
-    h = _headers(access_token, {"Prefer": prefer})
+    h = _headers(
+        access_token,
+        {"Prefer": prefer},
+        use_service=use_service
+    )
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.post(url, headers=h, content=json.dumps(body))
     if r.status_code >= 400:
@@ -62,12 +88,18 @@ async def rest_post(
         return None
 
 
-async def rest_patch(path: str, access_token: str, body: Any) -> Any:
+async def rest_patch(
+    path: str,
+    access_token: str | None,
+    body: Any,
+    use_service: bool = False
+) -> Any:
     s = get_settings()
     url = f"{s.supabase_url}/rest/v1/{path}"
     h = _headers(
         access_token,
         {"Prefer": "return=representation"},
+        use_service=use_service
     )
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.patch(url, headers=h, content=json.dumps(body))
@@ -81,12 +113,17 @@ async def rest_patch(path: str, access_token: str, body: Any) -> Any:
         return None
 
 
-async def rest_delete(path: str, access_token: str) -> Any:
+async def rest_delete(
+    path: str,
+    access_token: str | None,
+    use_service: bool = False
+) -> Any:
     s = get_settings()
     url = f"{s.supabase_url}/rest/v1/{path}"
     h = _headers(
         access_token,
         {"Prefer": "return=representation"},
+        use_service=use_service
     )
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.delete(url, headers=h)

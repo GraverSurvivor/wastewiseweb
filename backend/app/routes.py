@@ -470,3 +470,93 @@ async def scanner_student(
         "granted": True,
         "message": f"Access granted - {student['name']} ({student['roll_number']})",
     }
+class FaceRecognizeBody(BaseModel):
+    usn: str
+    name: str
+    status: str
+    message: str
+    timestamp: str
+
+@router.post("/scanner/face-recognize")
+async def face_recognize(body: FaceRecognizeBody):
+    """Called by Raspberry Pi / face scanner when a face is recognized"""
+    
+    # Get current meal type based on IST time
+    current_meal = get_current_meal()
+    if not current_meal:
+        return {"ok": False, "message": "No active meal slot right now"}
+    
+    today = today_ist_iso()
+    
+    # Find student by roll number
+    rows = await sb.rest_get(
+        f"students?select=id,name,roll_number&roll_number=eq.{body.usn.strip()}",
+        None,  # use service role
+        use_service=True
+    )
+    stu = rows[0] if isinstance(rows, list) and rows else None
+    
+    if not stu:
+        return {"ok": False, "granted": False, "message": "Student not found"}
+    
+    # Check booking
+    brows = await sb.rest_get(
+        f"bookings?select=*&student_id=eq.{stu['id']}"
+        f"&date=eq.{today}&meal_type=eq.{current_meal}",
+        None,
+        use_service=True
+    )
+    booking = brows[0] if isinstance(brows, list) and brows else None
+    
+    if not booking or booking.get("status") == "cancelled":
+        return {
+            "ok": True,
+            "granted": False,
+            "message": f"{stu['name']} has not booked {current_meal}"
+        }
+    
+    if booking.get("status") == "attended":
+        return {
+            "ok": True,
+            "granted": True,
+            "message": f"{stu['name']} already entered"
+        }
+    
+    # Mark attended
+    from datetime import datetime, timezone
+    ts = datetime.now(timezone.utc).isoformat()
+    await sb.rest_patch(
+        f"bookings?id=eq.{booking['id']}",
+        None,
+        {"status": "attended", "attended_at": ts},
+        use_service=True
+    )
+    
+    return {
+        "ok": True,
+        "granted": True,
+        "message": f"Welcome {stu['name']}! Enjoy your {current_meal}"
+    }
+
+
+def get_current_meal():
+    """Returns current active meal based on IST time"""
+    from .meals import now_ist
+    now = now_ist()
+    hour = now.hour
+    minute = now.minute
+    current_time = hour * 60 + minute
+    
+    # Breakfast: 7:30 - 9:00
+    if 450 <= current_time <= 540:
+        return "breakfast"
+    # Lunch: 12:00 - 14:00
+    elif 720 <= current_time <= 840:
+        return "lunch"
+    # Snacks: 16:30 - 17:30
+    elif 990 <= current_time <= 1050:
+        return "snacks"
+    # Dinner: 19:30 - 21:30
+    elif 1170 <= current_time <= 1290:
+        return "dinner"
+    return None
