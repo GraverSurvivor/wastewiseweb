@@ -174,6 +174,7 @@ useEffect(() => {
   let lastStatuses = {}
 
   const checkAttendance = async () => {
+    console.log("🔄 Polling attendance...") // debug line
     const { data } = await supabase
       .from('bookings')
       .select('meal_type, status')
@@ -196,7 +197,6 @@ useEffect(() => {
     })
   }
 
-  // Initialize lastStatuses first so first poll doesn't false-trigger
   supabase
     .from('bookings')
     .select('meal_type, status')
@@ -206,12 +206,21 @@ useEffect(() => {
       if (data) data.forEach((row) => {
         lastStatuses[row.meal_type] = row.status
       })
+      // Start polling only after initial load
+      const interval = setInterval(checkAttendance, 5000)
+      // Store interval id for cleanup — use a ref or closure
+      window._attendanceInterval = interval
     })
 
-  const interval = setInterval(checkAttendance, 5000)
-  return () => clearInterval(interval)
+  return () => {
+    if (window._attendanceInterval) {
+      clearInterval(window._attendanceInterval)
+      window._attendanceInterval = null
+    }
+  }
 
 }, [student?.id, student?.name, today, supabase, load])
+
   useEffect(() => {
     requestNotifyPermission()
   }, [])
