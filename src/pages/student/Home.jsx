@@ -27,17 +27,14 @@ function todayInRange(isoDate, from, to) {
 
 function readDismissedAnnouncements() {
   if (typeof localStorage === 'undefined') return []
-
   const raw = localStorage.getItem('ww_banner_dismissed')
   if (!raw) return []
-
   try {
     const parsed = JSON.parse(raw)
     if (Array.isArray(parsed)) return parsed.map(String)
   } catch {
     return [String(raw)]
   }
-
   return []
 }
 
@@ -61,25 +58,42 @@ const mealTone = {
 }
 
 function mealDescription({ leave, closed, row }) {
-  if (leave) {
-    return 'Leave is active for today, so this meal is automatically skipped.'
-  }
-  if (!row && closed) {
-    return 'This booking window is already closed for today.'
-  }
-  if (row?.status === 'booked') {
-    return 'You are booked. Keep this card handy before you head to the mess.'
-  }
-  if (row?.status === 'attended') {
-    return 'Attendance is already marked for this meal.'
-  }
-  if (row?.status === 'no_show') {
-    return 'This meal has already been counted as a no-show.'
-  }
-  if (row?.status === 'cancelled') {
-    return 'You cancelled this once. You can still book it again before the cutoff.'
-  }
+  if (leave) return 'Leave is active for today, so this meal is automatically skipped.'
+  if (!row && closed) return 'This booking window is already closed for today.'
+  if (row?.status === 'booked') return 'You are booked. Keep this card handy before you head to the mess.'
+  if (row?.status === 'attended') return 'Attendance is already marked for this meal.'
+  if (row?.status === 'no_show') return 'This meal has already been counted as a no-show.'
+  if (row?.status === 'cancelled') return 'You cancelled this once. You can still book it again before the cutoff.'
   return 'Secure your plate early and avoid missing the meal window.'
+}
+
+// Toast notification component
+function AttendanceToast({ toast, onClose }) {
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(onClose, 5000)
+    return () => clearTimeout(timer)
+  }, [toast, onClose])
+
+  if (!toast) return null
+
+  return (
+    <div className="fixed top-4 left-1/2 z-[100] -translate-x-1/2 w-[90%] max-w-sm">
+      <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-lg shadow-emerald-100/50">
+        <span className="text-2xl">✅</span>
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-emerald-900">{toast.title}</p>
+          <p className="text-xs text-emerald-700 mt-0.5">{toast.message}</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="text-emerald-500 hover:text-emerald-700 text-lg leading-none"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  )
 }
 
 export function StudentHome() {
@@ -87,16 +101,14 @@ export function StudentHome() {
   const [bookings, setBookings] = useState([])
   const [leaveRows, setLeaveRows] = useState([])
   const [announcements, setAnnouncements] = useState([])
-  const [stats, setStats] = useState({
-    attended: 0,
-    noshow: 0,
-  })
+  const [stats, setStats] = useState({ attended: 0, noshow: 0 })
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(null)
   const [confirmMeal, setConfirmMeal] = useState(null)
-  const [dismissedAnnouncements, setDismissedAnnouncements] = useState(
-    readDismissedAnnouncements,
-  )
+  const [dismissedAnnouncements, setDismissedAnnouncements] = useState(readDismissedAnnouncements)
+  
+  // New: attendance toast state
+  const [attendanceToast, setAttendanceToast] = useState(null)
 
   const today = useMemo(() => toISODateLocal(new Date()), [])
 
@@ -114,10 +126,7 @@ export function StudentHome() {
     const accessToken = await getAccessToken()
     if (accessToken) {
       try {
-        await apiJson('/bookings/reconcile', {
-          method: 'POST',
-          token: accessToken,
-        })
+        await apiJson('/bookings/reconcile', { method: 'POST', token: accessToken })
       } catch {
         // Keep loading the page even if reconciliation is unavailable.
       }
@@ -133,29 +142,14 @@ export function StudentHome() {
       supabase.from('bookings').select('*').eq('student_id', student.id).eq('date', today),
       supabase.from('leave_requests').select('*').eq('student_id', student.id),
       supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(20),
-      supabase
-        .from('bookings')
-        .select('id', { count: 'exact', head: true })
-        .eq('student_id', student.id)
-        .eq('status', 'attended')
-        .gte('date', isoStart)
-        .lte('date', isoEnd),
-      supabase
-        .from('bookings')
-        .select('id', { count: 'exact', head: true })
-        .eq('student_id', student.id)
-        .eq('status', 'no_show')
-        .gte('date', isoStart)
-        .lte('date', isoEnd),
+      supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('student_id', student.id).eq('status', 'attended').gte('date', isoStart).lte('date', isoEnd),
+      supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('student_id', student.id).eq('status', 'no_show').gte('date', isoStart).lte('date', isoEnd),
     ])
 
     if (bRes.data) setBookings(bRes.data)
     if (lRes.data) setLeaveRows(lRes.data)
     if (aRes.data) setAnnouncements(aRes.data.filter((item) => item?.id))
-    setStats({
-      attended: attRes.count ?? 0,
-      noshow: nsRes.count ?? 0,
-    })
+    setStats({ attended: attRes.count ?? 0, noshow: nsRes.count ?? 0 })
     setLoading(false)
   }, [getAccessToken, student?.id, supabase, today])
 
@@ -163,44 +157,74 @@ export function StudentHome() {
     load()
   }, [load])
 
+  // Existing: announcements realtime
   useEffect(() => {
     if (!supabase || !student?.id) return
-
     const channel = supabase
       .channel(`student-announcements-${student.id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'announcements' },
-        () => {
-          load()
-        },
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => { load() })
       .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    return () => { supabase.removeChannel(channel) }
   }, [load, student?.id, supabase])
 
+  // NEW: realtime attendance notification from face scanner
+useEffect(() => {
+  if (!supabase || !student?.id) return
+
+  let lastStatuses = {}
+
+  const checkAttendance = async () => {
+    const { data } = await supabase
+      .from('bookings')
+      .select('meal_type, status')
+      .eq('student_id', student.id)
+      .eq('date', today)
+
+    if (!data) return
+
+    data.forEach((row) => {
+      const prev = lastStatuses[row.meal_type]
+      if (prev && prev !== 'attended' && row.status === 'attended') {
+        const mealLabel = row.meal_type.charAt(0).toUpperCase() + row.meal_type.slice(1)
+        setAttendanceToast({
+          title: `${mealLabel} attendance marked! 🎉`,
+          message: `Welcome to the mess, ${student.name}! Enjoy your ${row.meal_type}.`,
+        })
+        load()
+      }
+      lastStatuses[row.meal_type] = row.status
+    })
+  }
+
+  // Initialize lastStatuses first so first poll doesn't false-trigger
+  supabase
+    .from('bookings')
+    .select('meal_type, status')
+    .eq('student_id', student.id)
+    .eq('date', today)
+    .then(({ data }) => {
+      if (data) data.forEach((row) => {
+        lastStatuses[row.meal_type] = row.status
+      })
+    })
+
+  const interval = setInterval(checkAttendance, 5000)
+  return () => clearInterval(interval)
+
+}, [student?.id, student?.name, today, supabase, load])
   useEffect(() => {
     requestNotifyPermission()
   }, [])
 
   useEffect(() => {
     if (typeof localStorage === 'undefined') return
-    localStorage.setItem(
-      'ww_banner_dismissed',
-      JSON.stringify(dismissedAnnouncements),
-    )
+    localStorage.setItem('ww_banner_dismissed', JSON.stringify(dismissedAnnouncements))
   }, [dismissedAnnouncements])
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
-      setAnnouncements((current) =>
-        current.filter((item) => item?.id && isAnnouncementActive(item)),
-      )
+      setAnnouncements((current) => current.filter((item) => item?.id && isAnnouncementActive(item)))
     }, 30000)
-
     return () => window.clearInterval(intervalId)
   }, [])
 
@@ -210,29 +234,22 @@ export function StudentHome() {
     for (const meal of MEALS) {
       const end = new Date(now)
       end.setHours(meal.end.h, meal.end.m, 0, 0)
-      cleanups.push(
-        scheduleMealEndReminder(meal.key, meal.label, end, (msg) => {
-          if (typeof window !== 'undefined') window.alert(msg)
-        }),
-      )
+      cleanups.push(scheduleMealEndReminder(meal.key, meal.label, end, (msg) => {
+        if (typeof window !== 'undefined') window.alert(msg)
+      }))
     }
     return () => cleanups.forEach((fn) => fn())
   }, [])
 
   const bookingByMeal = useMemo(() => {
     const map = {}
-    bookings.forEach((b) => {
-      map[b.meal_type] = b
-    })
+    bookings.forEach((b) => { map[b.meal_type] = b })
     return map
   }, [bookings])
 
   const visibleAnnouncements = useMemo(() => {
     return announcements.filter(
-      (item) =>
-        item?.message &&
-        isAnnouncementActive(item) &&
-        !dismissedAnnouncements.includes(String(item.id)),
+      (item) => item?.message && isAnnouncementActive(item) && !dismissedAnnouncements.includes(String(item.id)),
     )
   }, [announcements, dismissedAnnouncements])
 
@@ -287,36 +304,32 @@ export function StudentHome() {
     return (
       <div className="glass-surface p-5 text-sm">
         <p className="section-kicker text-amber-700">One step left</p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-          Complete your profile
-        </h1>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">Complete your profile</h1>
         <p className="mt-2 leading-6 text-slate-600">
           Add your details to book meals, submit complaints, and use the mess without friction.
         </p>
-        <Link to="/app/profile" className="primary-button mt-4 inline-flex">
-          Go to profile
-        </Link>
+        <Link to="/app/profile" className="primary-button mt-4 inline-flex">Go to profile</Link>
       </div>
     )
   }
 
   return (
     <div className="space-y-4 pb-4">
+      {/* Attendance toast notification */}
+      <AttendanceToast
+        toast={attendanceToast}
+        onClose={() => setAttendanceToast(null)}
+      />
+
       {visibleAnnouncements.map((item) => {
         const expiry = getAnnouncementExpiry(item)
         return (
           <AnnouncementBanner
             key={item.id}
             message={item.message}
-            meta={
-              expiry
-                ? `Visible until ${formatAnnouncementDate(expiry)}`
-                : 'Campus update'
-            }
+            meta={expiry ? `Visible until ${formatAnnouncementDate(expiry)}` : 'Campus update'}
             onDismiss={() => {
-              setDismissedAnnouncements((current) => [
-                ...new Set([...current, String(item.id)]),
-              ])
+              setDismissedAnnouncements((current) => [...new Set([...current, String(item.id)])])
             }}
           />
         )
@@ -339,23 +352,17 @@ export function StudentHome() {
 
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-white/15 bg-white/12 p-3 backdrop-blur">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/62">
-                This month
-              </p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/62">This month</p>
               <p className="mt-2 text-2xl font-bold text-white">{stats.attended}</p>
               <p className="mt-1 text-xs text-white/70">Meals attended</p>
             </div>
             <div className="rounded-2xl border border-white/15 bg-white/12 p-3 backdrop-blur">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/62">
-                No-show
-              </p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/62">No-show</p>
               <p className="mt-2 text-2xl font-bold text-white">{stats.noshow}</p>
               <p className="mt-1 text-xs text-white/70">Auto-tracked this month</p>
             </div>
             <div className="rounded-2xl border border-white/15 bg-white/12 p-3 backdrop-blur">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/62">
-                Today
-              </p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/62">Today</p>
               <p className="mt-2 text-lg font-bold text-white">
                 {onLeaveToday ? 'Vacation mode' : 'Ready to book'}
               </p>
@@ -369,13 +376,9 @@ export function StudentHome() {
         <div className="mb-3 flex items-end justify-between gap-3">
           <div>
             <p className="section-kicker">Daily booking</p>
-            <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900">
-              Today's meals
-            </h2>
+            <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900">Today's meals</h2>
           </div>
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
-            Quick actions
-          </p>
+          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Quick actions</p>
         </div>
         {loading ? (
           <MealCardsSkeleton />
@@ -390,19 +393,14 @@ export function StudentHome() {
 
               if (leave) statusLabel = 'On leave'
               else if (row?.status === 'booked') statusLabel = 'Booked'
-              else if (row?.status === 'attended') statusLabel = 'Attended'
+              else if (row?.status === 'attended') statusLabel = 'Attended ✓'
               else if (row?.status === 'no_show') statusLabel = 'No-show'
               else if (row?.status === 'cancelled') statusLabel = 'Cancelled'
               else if (!row && closed) statusLabel = 'Booking closed'
 
               const canBook =
-                !leave &&
-                !closed &&
-                (!row || row.status === 'cancelled') &&
-                row?.status !== 'attended'
-
-              const showCancel =
-                row?.status === 'booked' && canCancelBooking(meal.key) && !leave
+                !leave && !closed && (!row || row.status === 'cancelled') && row?.status !== 'attended'
+              const showCancel = row?.status === 'booked' && canCancelBooking(meal.key) && !leave
 
               return (
                 <div
@@ -411,23 +409,21 @@ export function StudentHome() {
                     confirmMeal === meal.key || busy === meal.key
                       ? 'ring-2 ring-primary/20 shadow-md shadow-primary/10'
                       : ''
-                  }`}
+                  } ${row?.status === 'attended' ? 'ring-2 ring-emerald-300/50' : ''}`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${tone.badge}`}
-                      >
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${tone.badge}`}>
                         {meal.label}
                       </span>
-                      <p className="mt-3 text-xl font-bold tracking-tight text-slate-900">
-                        {meal.label}
-                      </p>
-                      <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">
-                        {formatRange(meal.key)} IST
-                      </p>
+                      <p className="mt-3 text-xl font-bold tracking-tight text-slate-900">{meal.label}</p>
+                      <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">{formatRange(meal.key)} IST</p>
                     </div>
-                    <span className="rounded-full border border-white/70 bg-white/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600 shadow-sm">
+                    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] shadow-sm ${
+                      row?.status === 'attended'
+                        ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                        : 'border-white/70 bg-white/80 text-slate-600'
+                    }`}>
                       {statusLabel}
                     </span>
                   </div>
@@ -444,11 +440,7 @@ export function StudentHome() {
                         onClick={() => setConfirmMeal(meal.key)}
                         className="primary-button px-4 py-2.5 text-xs"
                       >
-                        {busy === meal.key
-                          ? 'Booking...'
-                          : row?.status === 'cancelled'
-                            ? 'Book again'
-                            : 'Book meal'}
+                        {busy === meal.key ? 'Booking...' : row?.status === 'cancelled' ? 'Book again' : 'Book meal'}
                       </button>
                     )}
                     {showCancel && (
@@ -473,35 +465,25 @@ export function StudentHome() {
         <div className="flex items-end justify-between gap-3">
           <div>
             <p className="section-kicker">Your trend</p>
-            <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900">
-              This month
-            </h2>
+            <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900">This month</h2>
           </div>
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
-            Personal stats
-          </p>
+          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Personal stats</p>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 text-center text-sm">
           <div className="metric-card py-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-              Attendance
-            </p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Attendance</p>
             <p className="mt-2 text-2xl font-bold text-primary">{stats.attended}</p>
             <p className="mt-1 text-xs text-slate-500">Meals attended</p>
           </div>
           <div className="metric-card py-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-              No-show
-            </p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">No-show</p>
             <p className="mt-2 text-2xl font-bold text-rose-600">{stats.noshow}</p>
             <p className="mt-1 text-xs text-slate-500">Auto-tracked</p>
           </div>
         </div>
       </section>
 
-      <p className="text-center text-xs text-slate-400">
-        Menu and impact: use the bottom navigation
-      </p>
+      <p className="text-center text-xs text-slate-400">Menu and impact: use the bottom navigation</p>
 
       {confirmMeal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-md">
@@ -512,13 +494,7 @@ export function StudentHome() {
               Book {MEALS.find((x) => x.key === confirmMeal)?.label} for today?
             </p>
             <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                className="secondary-button flex-1"
-                onClick={() => setConfirmMeal(null)}
-              >
-                No
-              </button>
+              <button type="button" className="secondary-button flex-1" onClick={() => setConfirmMeal(null)}>No</button>
               <button
                 type="button"
                 disabled={busy === confirmMeal}
