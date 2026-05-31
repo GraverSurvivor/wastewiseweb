@@ -540,23 +540,26 @@ async def face_recognize(body: FaceRecognizeBody):
 
 
 def get_current_meal():
-    """Returns current active meal based on IST time"""
-    from .meals import now_ist
-    now = now_ist()
-    hour = now.hour
-    minute = now.minute
-    current_time = hour * 60 + minute
+    # from .meals import now_ist
+    # now = now_ist()
+    # hour = now.hour
+    # minute = now.minute
+    # current_time = hour * 60 + minute
     
-    # Breakfast: 7:30 - 9:00
-    if 450 <= current_time <= 540:
-        return "breakfast"
-    # Lunch: 12:00 - 14:00
-    elif 720 <= current_time <= 840:
-        return "lunch"
-    # Snacks: 16:30 - 17:30
-    elif 990 <= current_time <= 1050:
-        return "snacks"
-    # Dinner: 19:30 - 21:30
-    elif 1170 <= current_time <= 1290:
-        return "dinner"
-    return None
+    # print(f"[SCANNER] Current IST time: {hour}:{minute:02d} ({current_time} mins)")
+
+    # # Breakfast: 7:30 - 9:00
+    # if 450 <= current_time <= 540:
+    #     return "breakfast"
+    # # Lunch: 12:00 - 14:00
+    # elif 720 <= current_time <= 840:
+    #     return "lunch"
+    # # Snacks: 16:30 - 17:30
+    # elif 990 <= current_time <= 1050:
+    #     return "snacks"
+    # # Dinner: 19:30 - 21:30
+    # elif 990 <= current_time <= 1290:
+    #     return "dinner"
+    
+    # return None
+    return "dinner"  # TEMPORARY — remove after testing
