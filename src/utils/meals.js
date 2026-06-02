@@ -25,6 +25,13 @@ export const MEALS = [
   },
 ]
 
+const BOOKING_CUTOFF_MINUTES = {
+  breakfast: 120,
+  lunch: 120,
+  snacks: 120,
+  dinner: 15,
+}
+
 const IST_OFFSET_MINUTES = 330
 
 function shiftToIst(d) {
@@ -47,17 +54,21 @@ function atIstOnDay(d, { h, m }) {
   )
 }
 
-/** Booking never closes */
+/** First instant when booking is no longer allowed for the meal. */
 export function bookingCutoff(mealKey, day = new Date()) {
-  return new Date('2099-12-31T23:59:59')
+  const meal = MEALS.find((m) => m.key === mealKey)
+  if (!meal) return new Date(day)
+  const start = atIstOnDay(day, meal.start)
+  const cutoffMinutes = BOOKING_CUTOFF_MINUTES[mealKey] ?? 120
+  return new Date(start.getTime() - cutoffMinutes * 60 * 1000)
 }
 
 export function isBookingClosed(mealKey, now = new Date()) {
-  return false
+  return now >= bookingCutoff(mealKey, now)
 }
 
 export function canCancelBooking(mealKey, now = new Date()) {
-  return true
+  return now < bookingCutoff(mealKey, now)
 }
 
 export function mealWindowStart(mealKey, day = new Date()) {
@@ -72,6 +83,7 @@ export function mealWindowEnd(mealKey, day = new Date()) {
   return atIstOnDay(day, meal.end)
 }
 
+/** Meal currently in serving window, or null if none. */
 export function getActiveServingMeal(now = new Date()) {
   for (const m of MEALS) {
     const a = atIstOnDay(now, m.start)
