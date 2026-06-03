@@ -31,7 +31,7 @@ BOOKING_CUTOFF_MINUTES = {
     "breakfast": 120,
     "lunch": 120,
     "snacks": 120,
-    "dinner": 15,
+    "dinner": 0,
 }
 
 
